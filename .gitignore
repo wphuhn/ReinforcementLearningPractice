@@ -1,0 +1,5 @@
+__pycache__/
+videos/
+.ipynb_checkpoints/
+*.dat
+*.out
