@@ -1,27 +1,39 @@
-import gym
-from gym import wrappers
 from time import time, sleep
 
-env_to_wrap = gym.make('MsPacman-v0')
-env = wrappers.Monitor(env_to_wrap, "./videos/" + str(time()) + "/", force = True)
-env.reset()
+import gym
+from gym import wrappers
 
-cummul_reward = 0.0
-for t in range(5000):
-    # 30 FPS rendering
-    env.render()
-    sleep(1./30.)
+from rl_functions.policies import next_action_with_random_policy
 
-    # Do the thing
-    action = env.action_space.sample()
-    _, reward, done, info = env.step(action)
+MAX_STEPS_PER_RUN = 5000
+ENV_NAME = 'MsPacman-v0'
+FRAME_RATE = 1./30. # 30 FPS rendering
+OUTPUT_FOLDER = "./videos/" + str(time()) + "/"
 
-    cummul_reward += reward
-    print("Step {} , Current reward {} , Cummul Reward {} , Lives Left {}".format(t+1, reward, cummul_reward, info["ale.lives"]))
-    if done:
-        print()
-        print("Number Steps: {} , Final Score: {}".format(t+1, cummul_reward))
-        break
+def main():
+    env_to_wrap = gym.make(ENV_NAME)
+    env = wrappers.Monitor(env_to_wrap, OUTPUT_FOLDER, force=True)
+    env.reset()
 
-env.close()
-env_to_wrap.close()
+    cumul_reward = 0.0
+    for timestep in range(MAX_STEPS_PER_RUN):
+        # 30 FPS rendering
+        env.render()
+        sleep(FRAME_RATE)
+
+        # Do the thing
+        action = next_action_with_random_policy(env)
+        _, reward, done, info = env.step(action)
+
+        cumul_reward += reward
+        print("Step {} , Current reward {} , Cummul Reward {} , Lives Left {}".format(timestep + 1, reward, cumul_reward, info["ale.lives"]))
+        if done:
+            print()
+            print("Number Steps: {} , Final Score: {}".format(timestep + 1, cumul_reward))
+            break
+
+    env.close()
+    env_to_wrap.close()
+
+if __name__ == "__main__":
+    main()
