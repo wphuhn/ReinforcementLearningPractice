@@ -1,39 +1,34 @@
-# -*- coding: utf-8 -*-
-"""
-Created on Sat Jul  6 19:58:59 2019
-
-@author: will
-"""
+from time import time
+import random
 
 import gym
 from gym import wrappers
-import time
-import random
 
-env_to_wrap = gym.make("MsPacman-v0")
-env = wrappers.Monitor(env_to_wrap, './videos/' + str(time.time()), force = True)
-env.reset()
+from rl_functions.policies import next_action_with_epsilon_random_policy
 
-PROB_TO_REMAIN = 0.95
-MAX_NUMBER_STEPS = 5000
+MAX_STEPS_PER_RUN = 5000
+ENV_NAME = 'MsPacman-v0'
+#FRAME_RATE = _
+OUTPUT_FOLDER = "./videos/" + str(time()) + "/"
+EPSILON = 0.05
 
-# Pick the initial action
-action = env.action_space.sample()
+def main():
+    env_to_wrap = gym.make(ENV_NAME)
+    env = wrappers.Monitor(env_to_wrap, OUTPUT_FOLDER, force=True)
+    env.reset()
 
-for i in range(MAX_NUMBER_STEPS):
-    env.render()
-    
-    # Every step (including the first), roll the dice to determine if we 
-    # reroll the action
-    # Note that this can occur on the first time step and, even if a reroll
-    # happens, we may randomly select the same action as before
-    if random.random() > PROB_TO_REMAIN:
-        action = env.action_space.sample()
+    action = None
+    for _ in range(MAX_STEPS_PER_RUN):
+        env.render()
 
-    _, _, done, info = env.step(action)
-    
-    if done:
-        break
-    
-env.close()
-env_to_wrap.close()
+        action = next_action_with_epsilon_random_policy(env, EPSILON, action)
+        _, _, done, _ = env.step(action)
+
+        if done:
+            break
+
+    env.close()
+    env_to_wrap.close()
+
+if __name__ == "__main__":
+    main()
