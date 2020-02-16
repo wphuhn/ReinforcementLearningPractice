@@ -14,6 +14,7 @@ MAX_STEPS_PER_RUN = 10000000
 NUM_RUNS = 4200 # Only relevant when OUTPUT_MOVIE = False
 OUTPUT_MOVIE = False
 FRAME_RATE = 1./30. # 30 FPS rendering
+N_ACTIONS = 8 # This should not be hard wired!
 
 def main():
     start_time = time()
@@ -27,7 +28,7 @@ def main():
                 env.render()
                 sleep(FRAME_RATE)
 
-            action = next_action_with_epsilon_random_policy(env, EPSILON, action)
+            action = next_action_with_epsilon_random_policy(N_ACTIONS, EPSILON, action)
             _, reward, done, info = env.step(action)
             cumul_reward += reward
 
