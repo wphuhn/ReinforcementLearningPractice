@@ -3,6 +3,17 @@ import copy
 import numpy as np
 from numpy.random import random, randint, choice
 
+class RandomPolicy:
+    def __init__(self, num_choices, random_generator=None):
+        self._num_choices = num_choices
+        self._random_generator = random_generator
+
+    def next_action(self):
+        if self._random_generator is None:
+            return randint(0, self._num_choices)
+        else:
+            return self._random_generator.integers(0, self._num_choices)
+
 def next_action_with_random_policy(num_choices, random_generator=None):
     if random_generator is None:
         return randint(0, num_choices)
