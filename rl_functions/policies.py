@@ -1,9 +1,7 @@
-import copy
-
 import numpy as np
 from numpy.random import random, randint, choice
 
-class RandomPolicy:
+class RandomPolicy(object):
     def __init__(self, num_choices, random_generator=None):
         self._num_choices = num_choices
         self._random_generator = random_generator
@@ -11,10 +9,9 @@ class RandomPolicy:
     def next_action(self):
         if self._random_generator is None:
             return randint(0, self._num_choices)
-        else:
-            return self._random_generator.integers(0, self._num_choices)
+        return self._random_generator.integers(0, self._num_choices)
 
-class ConstantPolicy:
+class ConstantPolicy(object):
     def __init__(self, action, epsilon=0.0, random_policy=None, random_generator=None):
         self.action = action
         if epsilon > 0.0 and random_policy is None:
@@ -39,7 +36,7 @@ class ConstantPolicy:
             self.action = random_action
         return self.action
 
-class GreedyPolicy:
+class GreedyPolicy(object):
     def __init__(self, epsilon=0.0, random_policy=None, random_generator=None):
         if epsilon > 0.0 and random_policy is None:
             raise Exception("when specifying an epsilon value greater than 0, you must also provide a random policy!")
@@ -53,8 +50,7 @@ class GreedyPolicy:
             return max_indices[0]
         if self._random_generator is None:
             return choice(max_indices)
-        else:
-            return self._random_generator.choice(max_indices)
+        return self._random_generator.choice(max_indices)
 
     def next_action(self, q_function):
         greedy_action = self._greedy_action(q_function)

@@ -4,12 +4,13 @@ import gym
 from gym import wrappers
 
 def run_summary(elapsed_time, run_index, n_steps, cumul_reward):
-    return "Elapsed Time: {} , Run: {} , Number Steps: {} , Final Score: {}".format(elapsed_time, run_index, n_steps, cumul_reward)
+    return f"Elapsed Time: {elapsed_time} , Run: {run_index} , Number Steps: {n_steps} , Final Score: {cumul_reward}"
 
 def step_statistics(timestep, reward, cumul_reward, lives_left):
-    return "Step {} , Current reward {} , Cummul Reward {} , Lives Left {}".format(timestep, reward, cumul_reward, lives_left)
+    return f"Step {timestep} , Current reward {reward} , Cumul Reward {cumul_reward} , Lives Left {lives_left}"
 
-def make_envs(env_name, output_movie=False, output_folder=None, env_seed=None, env_action_seed=None):
+def make_envs(env_name, output_movie=False, output_folder=None, env_seed=None,
+              env_action_seed=None):
     # Create the environments
     if output_movie:
         env_raw = gym.make(env_name)

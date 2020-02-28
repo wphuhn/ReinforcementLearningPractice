@@ -9,7 +9,7 @@ def test_run_summary_outputs_properly_formatted_string():
     assert actual == expected
 
 def test_run_summary_outputs_properly_formatted_string():
-    expected = "Step 3 , Current reward 17 , Cummul Reward 9002 , Lives Left 9"
+    expected = "Step 3 , Current reward 17 , Cumul Reward 9002 , Lives Left 9"
     actual = step_statistics(3, 17, 9002, 9)
     assert actual == expected
 
@@ -18,16 +18,16 @@ def test_run_summary_outputs_properly_formatted_string():
 def test_close_envs_closes_only_main_env_when_not_outputting_movie():
     env, env_raw = make_envs(ENV_NAME, output_movie=False)
     close_envs(env, env_raw)
-    assert(env is not None)
-    assert(env_raw is None)
+    assert env is not None
+    assert env_raw is None
     # This is what the close functionality does for Atari environments
-    assert(env.viewer is None)
+    assert env.viewer is None
 
 def test_close_envs_closes_both_env_when_outputting_movie():
     env, env_raw = make_envs(ENV_NAME, output_movie=True)
     close_envs(env, env_raw)
-    assert(env is not None)
-    assert(env_raw is not None)
+    assert env is not None
+    assert env_raw is not None
     # This is what the close functionality does for Atari environments
-    assert(env.viewer is None)
-    assert(env_raw.viewer is None)
+    assert env.viewer is None
+    assert env_raw.viewer is None
