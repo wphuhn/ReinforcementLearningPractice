@@ -68,3 +68,26 @@ class GreedyPolicy(object):
         if random_val < self._epsilon:
             return random_action
         return greedy_action
+
+class DeterministicPolicy(object):
+    def __init__(self, n_states, n_actions):
+        self._n_states = n_states
+        self._n_actions = n_actions
+        self._transitions = {}
+
+    def add_transitions(self, trans_dict):
+        for state, action in trans_dict.items():
+            if state < 0:
+                raise Exception("State index in deterministic policy must be non-negative")
+            if state >= self._n_states:
+                raise Exception(f"State index {state} in deterministic policy is larger than the maximum state index of {self._n_states-1}")
+            if action < 0:
+                raise Exception("Action index in deterministic policy must be non-negative")
+            if action >= self._n_actions:
+                raise Exception(f"Action index {action} in deterministic policy is larger than the maximum action index of {self._n_actions-1}")
+        self._transitions.update(trans_dict)
+
+    def next_action(self, state):
+        if state not in self._transitions:
+            raise Exception(f"State {state} in deterministic policy has no action registered with it")
+        return self._transitions[state]
