@@ -19,15 +19,18 @@ def multi_arm_bandit(action):
 
 def main():
     start_time = time()
-    # How big should this be?  And can we know ahead of time?
-    q_function = np.array([100.] * 9)
+    state = 0 # Multi-armed bandit has only one state
+    # Initialize q-function optimistically for all actions
+    q_function = {state:
+        {key: value for key, value in zip(range(9), [100.]*9)}
+    }
     greedy_policy = GreedyPolicy(epsilon=EPSILON, random_policy=RandomPolicy(9))
     for run_index in range(NUM_RUNS):
         cumul_reward = 0.0
         for timestep in range(MAX_STEPS_PER_RUN):
-            action = greedy_policy.next_action(q_function)
+            action = greedy_policy.next_action(q_function, state)
             reward = multi_arm_bandit(action)
-            q_function = update_q_function(q_function, action, ALPHA, reward)
+            q_function = update_q_function(q_function, state, action, ALPHA, reward)
             cumul_reward += reward
         print(run_summary(0, run_index + 1, timestep + 1, cumul_reward))
         if run_index % 100 == 0:
