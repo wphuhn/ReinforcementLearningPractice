@@ -2,12 +2,12 @@ import copy
 
 import pytest
 
-from constants import N_CHOICES
+from constants import N_ACTIONS
 from utilities import create_random_policy_with_fixed_rng
 
 @pytest.fixture
 def random_policy():
-    return create_random_policy_with_fixed_rng(N_CHOICES, 0)
+    return create_random_policy_with_fixed_rng(N_ACTIONS, 0)
 
 def test_random_policy_gives_deterministic_results_when_an_rng_with_a_fixed_seed_is_supplied(random_policy):
     actions_expected = [6, 5, 4, 2, 2]

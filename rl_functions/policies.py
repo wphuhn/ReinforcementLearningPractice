@@ -2,14 +2,14 @@ import numpy as np
 from numpy.random import random, randint, choice
 
 class RandomPolicy(object):
-    def __init__(self, num_choices, random_generator=None):
-        self._num_choices = num_choices
+    def __init__(self, num_actions, random_generator=None):
+        self._num_actions = num_actions
         self._random_generator = random_generator
 
     def next_action(self):
         if self._random_generator is None:
-            return randint(0, self._num_choices)
-        return self._random_generator.integers(0, self._num_choices)
+            return randint(0, self._num_actions)
+        return self._random_generator.integers(0, self._num_actions)
 
 class ConstantPolicy(object):
     def __init__(self, action, epsilon=0.0, random_policy=None, random_generator=None):
@@ -44,16 +44,21 @@ class GreedyPolicy(object):
         self._random_policy = random_policy
         self._random_generator = random_generator
 
-    def _greedy_action(self, q_function):
-        max_indices = np.where(q_function == q_function.max())[0]
-        if len(max_indices) == 1:
-            return max_indices[0]
+    def _greedy_action(self, q_function, state):
+        q_state = q_function[state]
+        # TODO: The following two lines should be better optimized
+        max_value = max(q_state.values())
+        max_actions = [
+            action for action, value in q_state.items() if (value == max_value)
+        ]
+        if len(max_actions) == 1:
+            return max_actions[0]
         if self._random_generator is None:
-            return choice(max_indices)
-        return self._random_generator.choice(max_indices)
+            return choice(max_actions)
+        return self._random_generator.choice(max_actions)
 
-    def next_action(self, q_function):
-        greedy_action = self._greedy_action(q_function)
+    def next_action(self, q_function, state):
+        greedy_action = self._greedy_action(q_function, state)
         if self._epsilon == 0.0:
             return greedy_action
 

@@ -1,2 +1,2 @@
 ENV_NAME = 'MsPacman-v0'
-N_CHOICES = 8
+N_ACTIONS = 8
