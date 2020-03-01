@@ -48,3 +48,30 @@ def update_q_function(q, state, action, alpha, reward):
         reward - q_new[state][action]
     )
     return q_new
+
+def update_first_visit_monte_carlo(trajectory, rewards, q, counts, gamma):
+    if len(trajectory) != len(rewards):
+        raise Exception(f"Trajectory and rewards have differing lengths of {len(trajectory)} and {len(rewards)}, respectively")
+    traj = copy.deepcopy(trajectory)
+    revs = copy.deepcopy(rewards)
+    qs = copy.deepcopy(q)
+    cnts = copy.deepcopy(counts)
+    g = 0
+    for time in range(len(traj)-1, -1, -1):
+        state, action = traj.pop(time)
+        reward = revs.pop(time)
+        g = gamma * g + reward
+        if (state, action) not in traj:
+            if state not in qs:
+                qs[state] = {}
+                cnts[state] = {}
+            if action not in qs[state]:
+                qs[state][action] = 0.0
+                cnts[state][action] = 0
+            old_avg = qs[state][action]
+            old_count = cnts[state][action]
+            new_avg = (old_avg * old_count + g) / (old_count + 1)
+            new_count = old_count + 1
+            qs[state][action] = new_avg
+            cnts[state][action] = new_count
+    return qs, cnts

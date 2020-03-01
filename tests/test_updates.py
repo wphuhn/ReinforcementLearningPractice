@@ -1,8 +1,12 @@
 import copy
 
 import numpy as np
+import pytest
 
-from rl_functions.updates import update_q_function
+from rl_functions.updates import (
+    update_q_function,
+    update_first_visit_monte_carlo,
+)
 
 def test_update_q_function_updates_existing_state_action_pair_when_the_pair_is_in_the_q_function():
     state = 0
@@ -112,3 +116,219 @@ def test_q_function_does_not_change_when_it_is_supplied_to_update_q_function():
     expected = copy.deepcopy(actual)
     _ = update_q_function(actual, state, action, alpha, reward)
     assert expected == actual
+
+def test_first_visit_monte_carlo_fails_when_trajectory_and_rewards_have_different_length():
+    trajectory = [
+        (1, 1),
+        (2, 0),
+        (3, 2),
+    ]
+    rewards = [5., -2.]
+    prev_q = {
+        1: {1: 0.0},
+        2: {0: 1.0},
+        3: {2: 2.0},
+    }
+    prev_counts = {
+        1: {1: 1},
+        2: {0: 1},
+        3: {2: 1},
+    }
+    gamma = 0.0
+    with pytest.raises(Exception) as excinfo:
+        _, _ = update_first_visit_monte_carlo(
+           trajectory,
+           rewards,
+           prev_q,
+           prev_counts,
+           gamma,
+       )
+    assert "Trajectory and rewards have differing lengths of 3 and 2, respectively" in str(excinfo.value)
+
+def test_first_visit_monte_carlo_gives_short_sighted_results_when_epsilon_is_zero():
+    trajectory = [
+        (1, 1),
+        (2, 0),
+        (3, 2),
+    ]
+    rewards = [5., -2., 3.]
+    prev_q = {
+        1: {1: 0.0},
+        2: {0: 1.0},
+        3: {2: 2.0},
+    }
+    prev_counts = {
+        1: {1: 1},
+        2: {0: 1},
+        3: {2: 1},
+    }
+    gamma = 0.0
+    actual_q, actual_counts = update_first_visit_monte_carlo(
+        trajectory,
+        rewards,
+        prev_q,
+        prev_counts,
+        gamma,
+    )
+    expected_q = {
+        1: {1: 2.5},
+        2: {0: -0.5},
+        3: {2: 2.5},
+    }
+    expected_counts = {
+        1: {1: 2},
+        2: {0: 2},
+        3: {2: 2},
+    }
+    assert expected_q == actual_q
+    assert expected_counts == actual_counts
+
+def test_first_visit_monte_carlo_gives_intermediate_results_when_epsilon_is_one_half():
+    trajectory = [
+        (1, 1),
+        (2, 0),
+        (3, 2),
+    ]
+    rewards = [5., -2., 3.]
+    prev_q = {
+        1: {1: 0.0},
+        2: {0: 1.0},
+        3: {2: 2.0},
+    }
+    prev_counts = {
+        1: {1: 1},
+        2: {0: 1},
+        3: {2: 1},
+    }
+    gamma = 0.5
+    actual_q, actual_counts = update_first_visit_monte_carlo(
+        trajectory,
+        rewards,
+        prev_q,
+        prev_counts,
+        gamma,
+    )
+    expected_q = {
+        1: {1: 2.375},
+        2: {0: 0.25},
+        3: {2: 2.5},
+    }
+    expected_counts = {
+        1: {1: 2},
+        2: {0: 2},
+        3: {2: 2},
+    }
+    assert expected_q == actual_q
+    assert expected_counts == actual_counts
+
+def test_first_visit_monte_carlo_gives_long_sighted_results_when_epsilon_is_one():
+    trajectory = [
+        (1, 1),
+        (2, 0),
+        (3, 2),
+    ]
+    rewards = [5., -2., 3.]
+    prev_q = {
+        1: {1: 0.0},
+        2: {0: 1.0},
+        3: {2: 2.0},
+    }
+    prev_counts = {
+        1: {1: 1},
+        2: {0: 1},
+        3: {2: 1},
+    }
+    gamma = 1.0
+    actual_q, actual_counts = update_first_visit_monte_carlo(
+        trajectory,
+        rewards,
+        prev_q,
+        prev_counts,
+        gamma,
+    )
+    expected_q = {
+        1: {1: 3.0},
+        2: {0: 1.0},
+        3: {2: 2.5},
+    }
+    expected_counts = {
+        1: {1: 2},
+        2: {0: 2},
+        3: {2: 2},
+    }
+    assert expected_q == actual_q
+    assert expected_counts == actual_counts
+
+def test_first_visit_monte_carlo_adds_actions_to_states_in_q_and_count_when_the_state_exists_but_the_state_action_pair_doesnt():
+    trajectory = [
+        (1, 1),
+        (2, 0),
+        (3, 2),
+    ]
+    rewards = [5., -2., 3.]
+    prev_q = {
+        1: {1: 0.0},
+        2: {0: 1.0},
+        3: {},
+    }
+    prev_counts = {
+        1: {1: 1},
+        2: {0: 1},
+        3: {},
+    }
+    gamma = 0.0
+    actual_q, actual_counts = update_first_visit_monte_carlo(
+        trajectory,
+        rewards,
+        prev_q,
+        prev_counts,
+        gamma,
+    )
+    expected_q = {
+        1: {1: 2.5},
+        2: {0: -0.5},
+        3: {2: 3.0},
+    }
+    expected_counts = {
+        1: {1: 2},
+        2: {0: 2},
+        3: {2: 1},
+    }
+    assert expected_q == actual_q
+    assert expected_counts == actual_counts
+
+def test_first_visit_monte_carlo_adds_state_action_pair_in_q_and_count_when_state_doesnt_exist():
+    trajectory = [
+        (1, 1),
+        (2, 0),
+        (3, 2),
+    ]
+    rewards = [5., -2., 3.]
+    prev_q = {
+        1: {1: 0.0},
+        2: {0: 1.0},
+    }
+    prev_counts = {
+        1: {1: 1},
+        2: {0: 1},
+    }
+    gamma = 0.0
+    actual_q, actual_counts = update_first_visit_monte_carlo(
+        trajectory,
+        rewards,
+        prev_q,
+        prev_counts,
+        gamma,
+    )
+    expected_q = {
+        1: {1: 2.5},
+        2: {0: -0.5},
+        3: {2: 3.0},
+    }
+    expected_counts = {
+        1: {1: 2},
+        2: {0: 2},
+        3: {2: 1},
+    }
+    assert expected_q == actual_q
+    assert expected_counts == actual_counts
