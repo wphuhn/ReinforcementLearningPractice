@@ -5,3 +5,4 @@ videos/
 *.egg-info/
 *.dat
 *.out
+*.pkl

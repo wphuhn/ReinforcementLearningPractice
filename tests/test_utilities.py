@@ -16,7 +16,7 @@ def test_run_summary_outputs_properly_formatted_string():
 #TODO: Tests for make_envs
 
 def test_close_envs_closes_only_main_env_when_not_outputting_movie():
-    env, env_raw = make_envs(ENV_NAME, output_movie=False)
+    env, env_raw, _ = make_envs(ENV_NAME, output_movie=False)
     close_envs(env, env_raw)
     assert env is not None
     assert env_raw is None
@@ -24,7 +24,7 @@ def test_close_envs_closes_only_main_env_when_not_outputting_movie():
     assert env.viewer is None
 
 def test_close_envs_closes_both_env_when_outputting_movie():
-    env, env_raw = make_envs(ENV_NAME, output_movie=True)
+    env, env_raw, _ = make_envs(ENV_NAME, output_movie=True)
     close_envs(env, env_raw)
     assert env is not None
     assert env_raw is not None

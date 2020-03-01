@@ -24,7 +24,7 @@ def main():
     constant_policy = ConstantPolicy(action, epsilon=EPSILON,
         random_policy=random_policy)
     for run_index in range(NUM_RUNS):
-        env, env_raw = make_envs(ENV_NAME, output_movie=OUTPUT_MOVIE)
+        env, env_raw, _ = make_envs(ENV_NAME, output_movie=OUTPUT_MOVIE)
 
         cumul_reward = 0.0
         for timestep in range(MAX_STEPS_PER_RUN):

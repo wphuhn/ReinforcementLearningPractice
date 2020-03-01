@@ -9,7 +9,7 @@ Currently, only the q function update is supported.
 
 import copy
 
-def update_q_function(q, state, action, alpha, reward):
+def update_q_iterative(q, state, action, alpha, reward):
     """Update the q function based on reward obtained from a state-action pair.
 
     The update method used is a simple iterative approach, with scaling factor
@@ -49,7 +49,7 @@ def update_q_function(q, state, action, alpha, reward):
     )
     return q_new
 
-def update_first_visit_monte_carlo(trajectory, rewards, q, counts, gamma):
+def update_q_on_policy_monte_carlo(trajectory, rewards, q, counts, gamma):
     if len(trajectory) != len(rewards):
         raise Exception(f"Trajectory and rewards have differing lengths of {len(trajectory)} and {len(rewards)}, respectively")
     traj = copy.deepcopy(trajectory)
