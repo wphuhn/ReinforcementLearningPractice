@@ -1,6 +1,11 @@
+import copy
+
+from numpy.random import default_rng
 import pytest
 
 from rl_functions.policies import DeterministicPolicy
+
+from utilities import create_random_policy_with_fixed_rng
 
 @pytest.fixture
 def det_policy():
@@ -77,3 +82,44 @@ def test_policy_throws_exception_when_attempting_to_generate_greedily_from_q_fun
     with pytest.raises(Exception) as excinfo:
         det_policy.generate_greedily_from_q(q)
     assert "state 3 does not have a unique greedy action in q function, cannot generate a deterministic policy for it" in str(excinfo.value)
+
+def test_epsilon_policy_gives_on_policy_result_when_epsilon_is_zero():
+    state = 50
+    expected = 25
+    transitions = {state: expected}
+    det_policy = DeterministicPolicy(epsilon=0.0)
+    det_policy.add_transitions(transitions)
+    for _ in range(100):
+        actual = det_policy.next_action(state)
+        assert expected == actual
+def test_epsilon_policy_gives_deterministic_results_when_an_rng_with_a_fixed_seed_is_supplied():
+    state = 50
+    action = 25
+    transitions = {state: action}
+    # Set the number of actions smaller than the on-policy action to clearly
+    # differentiate between on-policy and random actions
+    random_policy = create_random_policy_with_fixed_rng(action-1, 0)
+    random_generator = default_rng(seed=0)
+    det_policy = DeterministicPolicy(
+        epsilon=0.5,
+        random_policy=random_policy,
+        random_generator=random_generator,
+    )
+    det_policy.add_transitions(transitions)
+    actions_expected = [action, 15, 12, 6, action, action]
+    for expected in actions_expected:
+        actual = det_policy.next_action(state)
+        assert expected == actual
+
+def test_epsilon_policy_gives_identical_results_to_random_policy_when_epsilon_equals_one_and_same_rng_used():
+    dummy_state = 50
+    dummy_action = 25
+    dummy_transition = {dummy_state: dummy_action}
+    random_policy = create_random_policy_with_fixed_rng(8, 0)
+    random_policy_copy = copy.deepcopy(random_policy)
+    det_policy = DeterministicPolicy(epsilon=1.0, random_policy=random_policy_copy)
+    det_policy.add_transitions(dummy_transition)
+    for _ in range(100):
+        expected = random_policy.next_action()
+        actual = det_policy.next_action(dummy_state)
+        assert expected == actual

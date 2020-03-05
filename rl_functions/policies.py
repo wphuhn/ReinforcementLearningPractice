@@ -244,7 +244,7 @@ class GreedyPolicy(EpsilonSoftPolicy):
         action = self.epsilon_soft_action(on_policy_action)
         return action
 
-class DeterministicPolicy(object):
+class DeterministicPolicy(EpsilonSoftPolicy):
     """Deterministic policy which outputs a unique action given a state.
 
     By default, the policy is empty.  State-action pairs may be registered to
@@ -254,8 +254,9 @@ class DeterministicPolicy(object):
     Attributes:
         No public attributes
     """
-    def __init__(self):
+    def __init__(self, epsilon=0.0, random_policy=None, random_generator=None):
         """Inits deterministic policy with no registered state-action pairs."""
+        super().__init__(epsilon, random_policy, random_generator)
         self._transitions = {}
 
     def add_transitions(self, trans_dict):
@@ -294,7 +295,9 @@ class DeterministicPolicy(object):
         """
         if state not in self._transitions:
             raise Exception(f"State {state} in deterministic policy has no action registered with it")
-        return self._transitions[state]
+        on_policy_action = self._transitions[state]
+        action = self.epsilon_soft_action(on_policy_action)
+        return action
 
     def generate_greedily_from_q(self, q):
         """Adds state-action pairs to the based on greedy q-function maximizing.
