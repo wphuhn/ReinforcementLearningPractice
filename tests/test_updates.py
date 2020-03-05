@@ -145,7 +145,7 @@ def test_on_policy_monte_carlo_fails_when_trajectory_and_rewards_have_different_
        )
     assert "Trajectory and rewards have differing lengths of 3 and 2, respectively" in str(excinfo.value)
 
-def test_on_policy_monte_carlo_gives_short_sighted_results_when_epsilon_is_zero():
+def test_on_policy_monte_carlo_gives_short_sighted_results_when_gamma_is_zero():
     trajectory = [
         (1, 1),
         (2, 0),
@@ -183,7 +183,7 @@ def test_on_policy_monte_carlo_gives_short_sighted_results_when_epsilon_is_zero(
     assert expected_q == actual_q
     assert expected_counts == actual_counts
 
-def test_on_policy_monte_carlo_gives_intermediate_results_when_epsilon_is_one_half():
+def test_on_policy_monte_carlo_gives_intermediate_results_when_gamma_is_one_half():
     trajectory = [
         (1, 1),
         (2, 0),
@@ -221,7 +221,7 @@ def test_on_policy_monte_carlo_gives_intermediate_results_when_epsilon_is_one_ha
     assert expected_q == actual_q
     assert expected_counts == actual_counts
 
-def test_on_policy_monte_carlo_gives_long_sighted_results_when_epsilon_is_one():
+def test_on_policy_monte_carlo_gives_long_sighted_results_when_gamma_is_one():
     trajectory = [
         (1, 1),
         (2, 0),
