@@ -104,3 +104,23 @@ def update_q_on_policy_monte_carlo(trajectory, rewards, q, counts, gamma):
             qs[state][action] = new_avg
             cnts[state][action] = new_count
     return qs, cnts
+
+def update_q_sarsa(prev_pair, reward, next_pair, q, alpha, gamma):
+    s, a = prev_pair
+    if s not in q:
+        raise Exception(f"previous state {s} not found in q function")
+    if a not in q[s]:
+        raise Exception(f"previous action {a} not found in q function")
+    s_p, a_p = next_pair
+    if s_p not in q:
+        raise Exception(f"next state {s_p} not found in q function")
+    if a_p not in q[s_p]:
+        raise Exception(f"next action {a_p} not found in q function")
+    # Calculate new q value for old (state, action) pair
+    q_prev = q[s][a]
+    q_next = q[s_p][a_p]
+    q_prev = q_prev + alpha * (reward + gamma * q_next - q_prev)
+    # Update q and return
+    q_copy = copy.deepcopy(q)
+    q_copy[s][a] = q_prev
+    return q_copy

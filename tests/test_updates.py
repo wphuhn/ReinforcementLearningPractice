@@ -6,6 +6,7 @@ import pytest
 from rl_functions.updates import (
     update_q_iterative,
     update_q_on_policy_monte_carlo,
+    update_q_sarsa,
 )
 
 def test_update_q_iterative_updates_existing_state_action_pair_when_the_pair_is_in_the_q_function():
@@ -332,3 +333,131 @@ def test_on_policy_monte_carlo_adds_state_action_pair_in_q_and_count_when_state_
     }
     assert expected_q == actual_q
     assert expected_counts == actual_counts
+
+def test_sarsa_throws_exception_when_previous_state_is_not_in_q():
+    prev_pair = (1, 3)
+    reward = 0
+    next_pair = (2, 0)
+    q = {
+        2: {0: 20.},
+    }
+    alpha = 0.5
+    gamma = 0.5
+    with pytest.raises(Exception) as excinfo:
+        _ = update_q_sarsa(prev_pair, reward, next_pair, q, alpha, gamma)
+    assert "previous state 1 not found in q function" in str(excinfo.value)
+
+def test_sarsa_throws_exception_when_previous_action_is_not_in_q():
+    prev_pair = (1, 3)
+    reward = 4.
+    next_pair = (2, 0)
+    q = {
+        1: {},
+        2: {0: 20.},
+    }
+    alpha = 0.5
+    gamma = 0.5
+    with pytest.raises(Exception) as excinfo:
+        _ = update_q_sarsa(prev_pair, reward, next_pair, q, alpha, gamma)
+    assert "previous action 3 not found in q function" in str(excinfo.value)
+
+def test_sarsa_throws_exception_when_next_state_is_not_in_q():
+    prev_pair = (1, 3)
+    reward = 4.
+    next_pair = (2, 0)
+    q = {
+        1: {3: 10.},
+    }
+    alpha = 0.5
+    gamma = 0.5
+    with pytest.raises(Exception) as excinfo:
+        _ = update_q_sarsa(prev_pair, reward, next_pair, q, alpha, gamma)
+    assert "next state 2 not found in q function" in str(excinfo.value)
+
+def test_sarsa_throws_exception_when_next_action_is_not_in_q():
+    prev_pair = (1, 3)
+    reward = 4.
+    next_pair = (2, 0)
+    q = {
+        1: {3: 10.},
+        2: {},
+    }
+    alpha = 0.5
+    gamma = 0.5
+    with pytest.raises(Exception) as excinfo:
+        _ = update_q_sarsa(prev_pair, reward, next_pair, q, alpha, gamma)
+    assert "next action 0 not found in q function" in str(excinfo.value)
+
+def test_sarsa_throws_exception_when_next_action_is_not_in_q():
+    prev_pair = (1, 3)
+    reward = 4.
+    next_pair = (2, 0)
+    q = {
+        1: {3: 10.},
+        2: {},
+    }
+    alpha = 0.5
+    gamma = 0.5
+    with pytest.raises(Exception) as excinfo:
+        _ = update_q_sarsa(prev_pair, reward, next_pair, q, alpha, gamma)
+    assert "next action 0 not found in q function" in str(excinfo.value)
+
+def test_sarsa_has_no_effect_on_q_when_alpha_is_zero():
+    prev_pair = (1, 3)
+    reward = 4.
+    next_pair = (2, 0)
+    expected = {
+        1: {3: 10.},
+        2: {0: 20.},
+    }
+    alpha = 0.
+    gamma = 0.5
+    actual = update_q_sarsa(prev_pair, reward, next_pair, expected, alpha, gamma)
+    assert expected == actual
+
+def test_sarsa_replaces_previous_value_with_reward_when_alpha_is_one_and_gamma_is_zero():
+    prev_pair = (1, 3)
+    reward = 4.
+    next_pair = (2, 0)
+    q = {
+        1: {3: 10.},
+        2: {0: 20.},
+    }
+    alpha = 1.
+    gamma = 0.
+    expected = reward
+    q_new = update_q_sarsa(prev_pair, reward, next_pair, q, alpha, gamma)
+    actual = q_new[prev_pair[0]][prev_pair[1]]
+    assert expected == actual
+
+def test_sarsa_replaces_previous_value_with_reward_plus_next_value_when_alpha_is_one_and_gamma_is_one():
+    prev_pair = (1, 3)
+    reward = 4.
+    next_pair = (2, 0)
+    q = {
+        1: {3: 10.},
+        2: {0: 20.},
+    }
+    alpha = 1.
+    gamma = 1.
+    expected = reward + q[next_pair[0]][next_pair[1]]
+    q_new = update_q_sarsa(prev_pair, reward, next_pair, q, alpha, gamma)
+    actual = q_new[prev_pair[0]][prev_pair[1]]
+    assert expected == actual
+
+def test_sarsa_gives_expected_value_when_parameters_are_valid():
+    prev_pair = (1, 3)
+    reward = 4.
+    next_pair = (2, 0)
+    q = {
+        1: {3: 10.},
+        2: {0: 20.},
+    }
+    alpha = 0.3
+    gamma = 0.2
+    expected = (alpha * reward
+         + alpha * gamma * q[next_pair[0]][next_pair[1]]
+         + (1 - alpha) * q[prev_pair[0]][prev_pair[1]])
+    q_new = update_q_sarsa(prev_pair, reward, next_pair, q, alpha, gamma)
+    actual = q_new[prev_pair[0]][prev_pair[1]]
+    assert expected == actual
