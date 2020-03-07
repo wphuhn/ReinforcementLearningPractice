@@ -4,7 +4,7 @@ import numpy as np
 from numpy.random import normal
 
 from rl_functions.policies import GreedyPolicy, RandomPolicy
-from rl_functions.updates import update_q_iterative
+from rl_functions.updates import update_iterative
 from rl_functions.utilities import run_summary
 
 MAX_STEPS_PER_RUN = 100
@@ -30,7 +30,9 @@ def main():
         for timestep in range(MAX_STEPS_PER_RUN):
             action = greedy_policy.next_action(q_function, state)
             reward = multi_arm_bandit(action)
-            q_function = update_q_iterative(q_function, state, action, ALPHA, reward)
+            trajectory = [(state, action)]
+            rewards = [reward]
+            update_iterative(trajectory, rewards, q_function, ALPHA)
             cumul_reward += reward
         print(run_summary(0, run_index + 1, timestep + 1, cumul_reward))
         if run_index % 100 == 0:

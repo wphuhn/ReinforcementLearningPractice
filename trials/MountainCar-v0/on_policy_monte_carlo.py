@@ -4,9 +4,13 @@ from time import time, sleep
 import gym
 
 from rl_functions.policies import RandomPolicy, GreedyPolicy
-from rl_functions.updates import update_q_on_policy_monte_carlo
-from rl_functions.utilities import run_summary, make_envs, close_envs, \
-     step_statistics
+from rl_functions.updates import update_on_policy_monte_carlo
+from rl_functions.utilities import (
+    run_summary,
+    make_envs,
+    close_envs,
+    step_statistics,
+)
 
 # Various run-time parameters to be tweaked
 EPSILON = 0.05 # Degree of randomness in epsilon policy when training
@@ -104,7 +108,7 @@ def main():
         # Update the q function based on the trajector for this episode (when
         # training)
         if not OUTPUT_MOVIE:
-            q, counts = update_q_on_policy_monte_carlo(
+            update_on_policy_monte_carlo(
                 trajectory,
                 rewards,
                 q,
