@@ -113,13 +113,83 @@ def close_envs(env, env_raw=None):
         env_raw.close()
 
 class StateEncoder(object):
+    """Transforms a point in n-dimensional continuous space to a discrete value.
+
+    This transformation is performed via a standard grid-based approach, where
+    a grid is imposed over the continuous space and all points within a grid
+    element are mapped to the same discrete value.  Any coorindate for a point
+    which lies outside of the grid is "clamped" to the min/max value for the
+    grid.
+
+    The discrete value is generated via a standard mixed-radix expansion, where
+    the number of grid elements is the base.
+
+    Attributes:
+        No public attributes
+
+    Usage:
+        grid = [2, 2]
+        min_values = [0, 1]
+        max_values = [0, 1]
+        encoder = StateEncoder().fit(grid, min_values, max_values)
+        state = encoder.transform(-0.25, -0.25) # 0
+        state = encoder.transform(0.25, 0.25) # 0
+        state = encoder.transform(0.75, 0.75) # 3
+        state = encoder.transform(1.25, 1.25) # 3
+    """
     def __init__(self):
+        """Initializes the StateEncoder object to a default state.
+
+        Args:
+            None
+
+        Returns:
+            None
+
+        Raises:
+            None
+        """
         self._grid = None
         self._min_values = None
         self._max_values = None
         self._factors = None
 
     def fit(self, grid, min_values, max_values):
+        """Generates the mapping from n-dim real space to discrete values.
+
+        To omit a dimension entirely, set the number of grid elements  for that
+        dimension to 1.
+
+        Args:
+            grid: An n-dimensional array on integers representing the number of
+                grid intervals for each dimension.
+            min_values: An n-dimensional array of floating point numbers
+                representing the lower boundary for a given dimension.  All
+                values less than the lower boundary will be "clamped" to the
+                lower boundary.
+            min_values: An n-dimensional array of floating point numbers
+                representing the upper boundary for a given dimension.  All
+                values greater than the upper boundary will be "clamped" to the
+                upper boundary.
+
+        Returns:
+            None
+
+        Raises:
+            Exception when dimensions of grid, min_values, and max_values do
+                not agree.
+        """
+        if len(grid) != len(min_values):
+             raise Exception("grid and minimum values arrays have different dimensions")
+        if len(grid) != len(max_values):
+             raise Exception("grid and maximum values arrays have different dimensions")
+
+        for dim, (min_val, max_val) in enumerate(zip(min_values, max_values)):
+             if min_val > max_val:
+                 raise Exception(f"Minimum value {min_val} is greater than maximum value {max_val} for dimension {dim}")
+             if min_val == max_val:
+                 raise Exception(f"Minimum value {min_val} is equal to maximum value {max_val} for dimension {dim}; to omit this dimension, use grid value of 1 instead")
+
         self._grid = grid[:]
         self._min_values = min_values[:]
         self._max_values = max_values[:]
@@ -132,6 +202,25 @@ class StateEncoder(object):
         return self
 
     def transform(self, coords):
+        """Transforms a point in n-dim real space to a integer value.
+
+        The fit() function must be called to set up the mapping before this
+        function is called.
+
+        Args:
+            coords: An n-dimensional array of floating point numbers
+                representing the current state in an n-dimentional continuous
+                space.
+
+        Returns:
+            An integer representing the state in discrete space.
+
+        Raises:
+            None
+        """
+        if len(self._grid) != len(coords):
+             raise Exception("Dimension of real-space coordinates differs from the encoder's grid")
+
         factor = 1
         transformed = np.array([], dtype="int")
         for i, value in enumerate(coords):
@@ -144,7 +233,7 @@ class StateEncoder(object):
                 index = grid - 1
             else:
                 index = floor(
-                    (grid - 1) * (value - min_value) / (max_value - min_value)
+                    grid * (value - min_value) / (max_value - min_value)
                 )
             transformed = np.append(transformed, index)
         return np.dot(self._factors, transformed)

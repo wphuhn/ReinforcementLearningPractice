@@ -1,5 +1,9 @@
-from rl_functions.utilities import run_summary, step_statistics, make_envs, \
-    close_envs
+from rl_functions.utilities import (
+    run_summary,
+    step_statistics,
+    make_envs,
+    close_envs,
+)
 
 from constants import ENV_NAME
 
