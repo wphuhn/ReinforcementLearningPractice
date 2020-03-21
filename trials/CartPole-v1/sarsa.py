@@ -4,7 +4,7 @@ from time import time, sleep
 import gym
 
 from rl_functions.policies import RandomPolicy, GreedyPolicy
-from rl_functions.updates import update_sarsa
+from rl_functions.updates import SarsaControl
 from rl_functions.utilities import (
     run_summary,
     make_envs,
@@ -35,11 +35,11 @@ Observations:
 """
 
 # Various run-time parameters to be tweaked
-EPSILON = 0.01 # Degree of randomness in epsilon policy when training
+EPSILON = 0.1 # Degree of randomness in epsilon policy when training
 ENV_NAME = 'CartPole-v1' # OpenAI environment
-ALPHA = 0.75 # Update factor
-GAMMA = 1 - 1./200. # Discount factor for value estimation
-GRID = [1,  10,  10,  10] # Discretization grid for environment
+ALPHA = 0.1 # Update factor
+GAMMA = 1. - 1./200.0 # Discount factor for value estimation
+GRID = [1, 10, 10, 10] # Discretization grid for environment
 INITIAL_VALUE = 10 # Initial value for q-function
 MAX_STEPS_PER_EPISODE = 200 # Number of steps per episode (obviously)
 NUM_EPSIODES = 420000 # Number of episodes to run
@@ -88,6 +88,7 @@ def main():
         #       known.
         for state in range(n_states):
             q[state] = {key: INITIAL_VALUE for key in range(n_actions)}
+        control = SarsaControl(ALPHA, GAMMA, q=q)
 
     # Outer loop for episode
     for episode in range(NUM_EPSIODES):
@@ -114,15 +115,11 @@ def main():
             trajectory.append((state, action))
             # Update the q function based on the trajector for this episode
             if timestep > 0:
-                update_sarsa(
-                    trajectory,
-                    rewards,
-                    q,
-                    ALPHA,
-                    GAMMA,
-                )
+                control.update(trajectory, rewards)
+                q = control.get_q()
             observation, reward, done, _ = env.step(action)
             rewards.append(reward)
+            state = state_encoder.transform(observation)
             cumul_reward += reward
 
             # Output time step results to screen.  Only do this when outputting
@@ -135,8 +132,6 @@ def main():
                 elapsed_time = time() - start_time
                 print(run_summary(elapsed_time, episode + 1, timestep + 1, cumul_reward))
                 break
-            # Get the new state, if we haven't
-            state = state_encoder.transform(observation)
 
         close_envs(env, env_raw)
         if episode % MODEL_SAVE_FREQUENCY == 0:

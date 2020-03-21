@@ -4,12 +4,13 @@ from time import time, sleep
 import gym
 
 from rl_functions.policies import RandomPolicy, GreedyPolicy
-from rl_functions.updates import update_on_policy_monte_carlo
+from rl_functions.updates import OnPolicyMonteCarloControl
 from rl_functions.utilities import (
     run_summary,
     make_envs,
     close_envs,
     step_statistics,
+    StateEncoder,
 )
 
 # Various run-time parameters to be tweaked
@@ -22,14 +23,6 @@ NUM_EPSIODES = 4200 # Number of episodes to run
 OUTPUT_MOVIE = False # Whether to output a movie (will not train when doing so)
 FRAME_RATE = 1./30. # FPS when rending a movie
 
-def map_2D_to_discrete_space(coord, grid, min_values, max_values):
-    # Maps the real-valued 2D observation state returned by the environment to
-    # a discretized integer-valued state
-    from math import floor
-    x = grid[0] * (coord[0] - min_values[0]) / (max_values[0] - min_values[0])
-    y = grid[1] * (coord[1] - min_values[1]) / (max_values[1] - min_values[1])
-    return floor(y) * grid[0] + floor(x)
-
 def main():
     start_time = time()
 
@@ -38,6 +31,7 @@ def main():
     n_actions = gym.make(ENV_NAME).action_space.n
     min_values = gym.make(ENV_NAME).observation_space.low
     max_values = gym.make(ENV_NAME).observation_space.high
+    state_encoder = StateEncoder().fit(GRID, min_values, max_values)
 
     q = {}
     counts = {}
@@ -59,16 +53,17 @@ def main():
         for state in range(n_states):
             q[state] = {key: 0. for key in range(n_actions)}
             counts[state] = {key: 0 for key in range(n_actions)}
+        control = OnPolicyMonteCarloControl(GAMMA, q=q, counts=counts)
 
     # Outer loop for episode
     for episode in range(NUM_EPSIODES):
         # Create the initial environment and register the initial state
-        env, env_raw, obs = make_envs(
+        env, env_raw, observation = make_envs(
             ENV_NAME,
             output_movie=OUTPUT_MOVIE,
             max_steps_per_episode=MAX_STEPS_PER_EPISODE,
         )
-        state = map_2D_to_discrete_space(obs, GRID, min_values, max_values)
+        state = state_encoder.transform(observation)
 
         # Generate the trajectory for this episode
         trajectory = []
@@ -98,23 +93,13 @@ def main():
                 print(run_summary(elapsed_time, episode + 1, timestep + 1, cumul_reward))
                 break
             # Get the new state, if we haven't
-            state = map_2D_to_discrete_space(
-                observation,
-                GRID,
-                min_values,
-                max_values,
-            )
+            state = state_encoder.transform(observation)
 
         # Update the q function based on the trajector for this episode (when
         # training)
         if not OUTPUT_MOVIE:
-            update_on_policy_monte_carlo(
-                trajectory,
-                rewards,
-                q,
-                counts,
-                GAMMA,
-            )
+            control.update(trajectory, rewards)
+            q = control.get_q()
 
         close_envs(env, env_raw)
         if OUTPUT_MOVIE:
