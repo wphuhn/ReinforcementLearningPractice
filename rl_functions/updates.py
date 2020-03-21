@@ -9,7 +9,39 @@ Currently, only the q function update is supported.
 
 import copy
 
-class IterativeControl(object):
+class Control(object):
+    """Core functionality for control classes
+    """
+
+    def __init__(self, q={}):
+        """Initializes the core control functionality
+
+        Args:
+            q: (optional) An initial q-function to use, represented as a
+                two-level nested Iterable, i.e. of form q[state][action].  If
+                this argument is not supplied, an empty q-function will be
+                initialized.
+
+        Raises:
+            None
+        """
+        self._q = copy.deepcopy(q)
+
+    def get_q(self):
+        """Returns the current q-function.
+
+        Args:
+
+        Returns:
+            The q function represented as a two-level nested Iterable, i.e. of
+            form q[state][action].
+
+        Raises:
+            None
+        """
+        return copy.deepcopy(self._q)
+
+class IterativeControl(Control):
     """Control for updating q function based on current state-action reward
 
     Because this control has no memory, it is suitable for multi-armed bandits
@@ -32,8 +64,8 @@ class IterativeControl(object):
         Raises:
             None
         """
+        super().__init__(q=q)
         self.alpha = alpha
-        self._q = copy.deepcopy(q)
 
     def update(self, trajectory, rewards):
         """Update q function based on reward from latest state-action pair.
@@ -77,24 +109,10 @@ class IterativeControl(object):
         q_new = q_prev + self.alpha * (reward - q_prev)
         self._q[state][action] = q_new
 
-    def get_q(self):
-        """Returns the current q-function.
-
-        Args:
-
-        Returns:
-            The q function represented as a two-level nested Iterable, i.e. of
-            form q[state][action].
-
-        Raises:
-            None
-        """
-        return copy.deepcopy(self._q)
-
-class OnPolicyMonteCarloControl(object):
+class OnPolicyMonteCarloControl(Control):
     def __init__(self, gamma, q={}, counts={}):
+        super().__init__(q=q)
         self.gamma = gamma
-        self._q = copy.deepcopy(q)
         self._counts = copy.deepcopy(counts)
 
     def update(self, trajectory, rewards):
@@ -157,27 +175,14 @@ class OnPolicyMonteCarloControl(object):
                self._q[state][action] = new_avg
                self._counts[state][action] = new_count
 
-    def get_q(self):
-        """Returns the current q-function.
-
-        Args:
-
-        Returns:
-            The internal q-function will be updated in-place.
-
-        Raises:
-            None
-        """
-        return copy.deepcopy(self._q)
-
     def get_counts(self):
         return copy.deepcopy(self._counts)
 
-class SarsaControl(object):
+class SarsaControl(Control):
     def __init__(self, alpha, gamma, q={}):
+        super().__init__(q=q)
         self.alpha = alpha
         self.gamma = gamma
-        self._q = copy.deepcopy(q)
 
     def update(self, trajectory, rewards):
         """Update the q function using Sarsa control
@@ -230,14 +235,11 @@ class SarsaControl(object):
         # Update q and return
         self._q[s][a] = q_prev
 
-    def get_q(self):
-        return copy.deepcopy(self._q)
-
-class QLearningControl(object):
+class QLearningControl(Control):
     def __init__(self, alpha, gamma, q={}):
+        super().__init__(q=q)
         self.alpha = alpha
         self.gamma = gamma
-        self._q = copy.deepcopy(q)
 
     def update(self, trajectory, rewards):
         """Update the q function using Q-learning
@@ -285,6 +287,3 @@ class QLearningControl(object):
         q_prev= q_prev + self.alpha * (reward + self.gamma * q_max - q_prev)
         # Update q and return
         self._q[s][a] = q_prev
-
-    def get_q(self):
-        return copy.deepcopy(self._q)
