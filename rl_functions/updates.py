@@ -4,17 +4,23 @@ Currently, only the q function update is supported.
 
     Typical usage example:
 
-    N/A
+    alpha = 0.5
+    trajectory = [{0, 1}, {2, 3}, {4, 5}]
+    rewards = [7, 13, 12]
+
+    control = SomeControl(alpha)
+    control.update(trajectory, rewards)
+    q_function = control.get_q()
 """
 
 import copy
 
 class Control(object):
-    """Core functionality for control classes
+    """Core functionality for control classes.
     """
 
-    def __init__(self, q={}):
-        """Initializes the core control functionality
+    def __init__(self, q=None):
+        """Initializes the core control functionality.
 
         Args:
             q: (optional) An initial q-function to use, represented as a
@@ -25,12 +31,15 @@ class Control(object):
         Raises:
             None
         """
+        if q is None:
+            q = {}
         self._q = copy.deepcopy(q)
 
     def get_q(self):
         """Returns the current q-function.
 
         Args:
+            None
 
         Returns:
             The q function represented as a two-level nested Iterable, i.e. of
@@ -41,18 +50,23 @@ class Control(object):
         """
         return copy.deepcopy(self._q)
 
-class IterativeControl(Control):
-    """Control for updating q function based on current state-action reward
 
-    Because this control has no memory, it is suitable for multi-armed bandits
-    only.
+class IterativeControl(Control):
+    """Control for updating q function based on current state-action reward.
+
+    The update method used is a simple iterative approach, with scaling factor
+    alpha.  If the state exists in the q-function but the state-action pair does
+    not, the state-action pair will be initialized to the maximum q value for
+    that state before applying the update.  If the state does not exist in the
+    q-function, the state-action pair will be initialized to a value of zero
+    before applying the update.
 
     Attributes:
         alpha: The scaling factor for the update.
     """
 
-    def __init__(self, alpha, q={}):
-        """Initializes the iterative control
+    def __init__(self, alpha, q=None):
+        """Initializes the iterative control.
 
         Args:
             alpha: The scaling factor for the update.
@@ -64,18 +78,13 @@ class IterativeControl(Control):
         Raises:
             None
         """
+        if q is None:
+            q = {}
         super().__init__(q=q)
         self.alpha = alpha
 
     def update(self, trajectory, rewards):
         """Update q function based on reward from latest state-action pair.
-
-        The update method used is a simple iterative approach, with scaling
-        factor alpha.  If the state exists in the q-function but the
-        state-action pair does not, the state-action pair will be initialized to
-        the maximum q value for that state before applying the update.  If the
-        state does not exist in the q-function, the state-action pair will be
-        initialized to a value of zero before applying the update.
 
         Args:
             trajectory: The trajectory for the episode as a list of
@@ -109,77 +118,141 @@ class IterativeControl(Control):
         q_new = q_prev + self.alpha * (reward - q_prev)
         self._q[state][action] = q_new
 
+
 class OnPolicyMonteCarloControl(Control):
-    def __init__(self, gamma, q={}, counts={}):
+    """Control for updating q function based on on-policy Monte Carlo algorithm
+
+    Currently, only first-visit Monte Carlo is currently supported.  We store
+    both the q-function and number of times a state-action pair has been visited
+    to make calculating the new average G value easier and reduce memory
+    overhead.  If the state or state-action pair do not exist in the q-function,
+    it will be added automatically.
+
+    Attributes:
+        alpha: The scaling factor for the update.
+        gamma: The discount factor for rewards.
+    """
+
+    def __init__(self, gamma, q=None, counts=None):
+        """Initializes the on-policy Monte Carlo control.
+
+        Args:
+            gamma: The discount factor for rewards.
+            q: (optional) An initial q-function to use, represented as a
+                two-level nested Iterable, i.e. of form q[state][action].  If
+                this argument is not supplied, an empty q-function will be
+                initialized.
+            counts: (optional) The initial counts (number of times a
+                state-action pair has been visited) to use, represented as a
+                two-level nested Iterable, i.e. of form counts[state][action].
+                If this argument is not supplied, an empty counts will be
+                initialized.
+
+        Raises:
+            None
+        """
+        if q is None:
+            q = {}
+        if counts is None:
+            counts = {}
         super().__init__(q=q)
         self.gamma = gamma
         self._counts = copy.deepcopy(counts)
 
     def update(self, trajectory, rewards):
-       """Update the q function using on-policy Monte Carlo control
+        """Update the q function using on-policy Monte Carlo control
 
-       This update method is an on-policy Monte Carlo approach with discount factor
-       gamma.  Only first-visit Monte Carlo is currently supported.  We store both
-       the q-function and number of times a state-action pair has been visited to
-       make calculating the new average G value easier and reduce memory overhead.
-       If the state or state-action pair do not exist in the q-function, it will be
-       added automatically.
+        Args:
+            trajectory: The trajectory for the episode as a list of
+                (state, action) pairs, i.e. [(state0, action0),
+                (state1, action1), ...].
+            rewards: The rewards generated by the environment for the trajectory
+                as a list, i.e. [reward0, reward1, ...].  Sister array to
+                trajectory.
 
-       Args:
-           trajectory: The trajectory for the episode as a list of (state, action)
-               pairs, i.e. [(state0, action0), (state1, action1), ...].
-           rewards: The rewards generated by the environment for the trajectory
-               as a list, i.e. [reward0, reward1, ...].  Sister array to
-               trajectory.
-           q: The q function represented as a two-level nested Iterable, i.e. of
-               form q[state][action].  This argument is not updated in-place.
-           counts: The number of times a given state-action pair have been
-               visited throughout the entire training process.  Sister array to
-               q with the same structure (represented as a two-level nested
-               Iterable, not updated in place).
-           gamma: The discount factor for rewards.
+        Returns:
+             None (updates the q-function internally).
 
-       Returns:
-           The q function and counts will be updated in-place.
-
-       Raises:
-           Exception when the length of rewards and trajectory is not the same.
-       """
-       if len(trajectory) != len(rewards):
-           raise Exception(f"Trajectory and rewards have differing lengths of {len(trajectory)} and {len(rewards)}, respectively")
-       traj = copy.deepcopy(trajectory)
-       revs = copy.deepcopy(rewards)
-       g = 0
-       for time in range(len(traj)-1, -1, -1):
-           state, action = traj.pop(time)
-           reward = revs.pop(time)
-           g = self.gamma * g + reward
-           # Note: the following loop ensures that we only update q and counts
-           # once for any given state-action pair based off of data that is
-           # fixed (the current q/count value and the rewards).
-           # If every visit is implemented, there is the possibility that partially
-           # updated data will leak # downstream into the trajectoy unless we work
-           # off copies of q and counts.  That being said, this leakage may
-           # actually be a good thing.
-           if (state, action) not in traj:
-               if state not in self._q:
-                   self._q[state] = {}
-                   self._counts[state] = {}
-               if action not in self._q[state]:
-                   self._q[state][action] = 0.0
-                   self._counts[state][action] = 0
-               old_avg = self._q[state][action]
-               old_count = self._counts[state][action]
-               new_avg = (old_avg * old_count + g) / (old_count + 1)
-               new_count = old_count + 1
-               self._q[state][action] = new_avg
-               self._counts[state][action] = new_count
+        Raises:
+            Exception when the length of rewards and trajectory is not the same.
+        """
+        if len(trajectory) != len(rewards):
+            raise Exception(f"Trajectory and rewards have differing lengths of {len(trajectory)} and {len(rewards)}, respectively")
+        traj = copy.deepcopy(trajectory)
+        revs = copy.deepcopy(rewards)
+        g = 0
+        for time in range(len(traj)-1, -1, -1):
+            state, action = traj.pop(time)
+            reward = revs.pop(time)
+            g = self.gamma * g + reward
+            # Note: the following loop ensures that we only update q and counts
+            # once for any given state-action pair based off of data that is
+            # fixed (the current q/count value and the rewards).
+            # If every visit is implemented, there is the possibility that partially
+            # updated data will leak # downstream into the trajectoy unless we work
+            # off copies of q and counts.  That being said, this leakage may
+            # actually be a good thing.
+            if (state, action) not in traj:
+                if state not in self._q:
+                    self._q[state] = {}
+                    self._counts[state] = {}
+                if action not in self._q[state]:
+                    self._q[state][action] = 0.0
+                    self._counts[state][action] = 0
+                old_avg = self._q[state][action]
+                old_count = self._counts[state][action]
+                new_avg = (old_avg * old_count + g) / (old_count + 1)
+                new_count = old_count + 1
+                self._q[state][action] = new_avg
+                self._counts[state][action] = new_count
 
     def get_counts(self):
+        """Returns the current counts (# times a state-action was sampled).
+
+        Args:
+            None
+
+        Returns:
+            The counts, represented as a two-level nested Iterable, i.e. of
+            form q[state][action].
+
+        Raises:
+            None
+        """
         return copy.deepcopy(self._counts)
 
+
 class SarsaControl(Control):
-    def __init__(self, alpha, gamma, q={}):
+    """Control for updating q function based on the Sarsa algorithm
+
+    Owing to the backup nature of this algorithm, depending on how one writes
+    down the math for this algorithm the "current" reward could refer either to
+    the reward from the previous time step (which is what enters into Sarsa) or
+    the reward from the current time step.  To reduce confusion, I've decided to
+    explicitly write the code in terms of the former definition.  This means
+    that the rewards list should have one less element than the trajectory.
+
+    Attributes:
+        alpha: The scaling factor for the update.
+        gamma: The discount factor for rewards.
+    """
+
+    def __init__(self, alpha, gamma, q=None):
+        """Initializes the Sarsa control.
+
+        Args:
+            alpha: The scaling factor for the update.
+            gamma: The discount factor for rewards.
+            q: (optional) An initial q-function to use, represented as a
+                two-level nested Iterable, i.e. of form q[state][action].  If
+                this argument is not supplied, an empty q-function will be
+                initialized.
+
+        Raises:
+            None
+        """
+        if q is None:
+            q = {}
         super().__init__(q=q)
         self.alpha = alpha
         self.gamma = gamma
@@ -187,27 +260,16 @@ class SarsaControl(Control):
     def update(self, trajectory, rewards):
         """Update the q function using Sarsa control
 
-        Owing to the backup nature of this algorithm, depending on how one writes
-        down the math for this algorithm the "current" reward could refer either to
-        the reward from the previous time step (which is what enters into Sarsa) or
-        the reward from the current time step.  To reduce confusion, I've decided to
-        explicitly write the code in terms of the former definition.  This means
-        that the rewards list should have one less element than the trajectory.
-
         Args:
-            trajectory: The trajectory for the episode as a list of (state, action)
-                pairs, i.e. [(state0, action0), (state1, action1), ...].
+            trajectory: The trajectory for the episode as a list of (state,
+                action) pairs, i.e. [(state0, action0), (state1, action1), ...].
             rewards: The rewards generated by the environment for the trajectory
                 as a list, i.e. [reward0, reward1, ...].  Sister array to
                 trajectory.  Should not include the reward for the current time
                 step!
-            q: The q function represented as a two-level nested Iterable, i.e. of
-                form q[state][action].  This argument is not updated in-place.
-            alpha: The scaling factor for the update.
-            gamma: The discount factor for rewards.
 
         Returns:
-            The q function will be updated in-place.
+            None (updates the q-function internally).
 
         Raises:
             Exception when state-action pairs are not found in the q function.
@@ -235,32 +297,50 @@ class SarsaControl(Control):
         # Update q and return
         self._q[s][a] = q_prev
 
+
 class QLearningControl(Control):
-    def __init__(self, alpha, gamma, q={}):
+    """Control for updating q function based on Q-learning algorithm
+
+    Attributes:
+        alpha: The scaling factor for the update.
+        gamma: The discount factor for rewards.
+    """
+
+    def __init__(self, alpha, gamma, q=None):
+        """Initializes the Q-learning control.
+
+        Args:
+            alpha: The scaling factor for the update.
+            gamma: The discount factor for rewards.
+            q: (optional) An initial q-function to use, represented as a
+                two-level nested Iterable, i.e. of form q[state][action].  If
+                this argument is not supplied, an empty q-function will be
+                initialized.
+
+        Raises:
+            None
+        """
+        if q is None:
+            q = {}
         super().__init__(q=q)
         self.alpha = alpha
         self.gamma = gamma
 
     def update(self, trajectory, rewards):
-        """Update the q function using Q-learning
-
-        TODO
+        """Update the q function using the Q-learning algorithm
 
         Args:
-            trajectory: The trajectory for the episode as a list of (state, action)
-                pairs, i.e. [(state0, action0), (state1, action1), ...].  Note that
-                the final "pair" should consist of only a state, i.e. (state, )
+            trajectory: The trajectory for the episode as a list of (state,
+                action) pairs, i.e. [(state0, action0), (state1, action1), ...].
+                Note that the final "pair" should consist of only a state, i.e.
+                (state, )
             rewards: The rewards generated by the environment for the trajectory
                 as a list, i.e. [reward0, reward1, ...].  Sister array to
                 trajectory.  Should not include the reward for the current time
                 step!
-            q: The q function represented as a two-level nested Iterable, i.e. of
-                form q[state][action].  This argument is not updated in-place.
-            alpha: The scaling factor for the update.
-            gamma: The discount factor for rewards.
 
         Returns:
-            The q function will be updated in-place.
+            None (updates the q-function internally).
 
         Raises:
             Exception when state-action pairs are not found in the q function.
@@ -284,6 +364,6 @@ class QLearningControl(Control):
         # Calculate new q value for old (state, action) pair
         q_prev = self._q[s][a]
         q_max = max(self._q[s_p].values())
-        q_prev= q_prev + self.alpha * (reward + self.gamma * q_max - q_prev)
+        q_prev = q_prev + self.alpha * (reward + self.gamma * q_max - q_prev)
         # Update q and return
         self._q[s][a] = q_prev
