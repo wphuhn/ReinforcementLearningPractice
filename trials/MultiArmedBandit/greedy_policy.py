@@ -4,7 +4,7 @@ import numpy as np
 from numpy.random import normal
 
 from rl_functions.policies import GreedyPolicy, RandomPolicy
-from rl_functions.updates import IterativeControl
+from rl_functions.controls import IterativeControl
 from rl_functions.utilities import run_summary
 
 MAX_STEPS_PER_RUN = 100

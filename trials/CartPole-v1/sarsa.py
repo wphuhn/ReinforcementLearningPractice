@@ -4,7 +4,7 @@ from time import time, sleep
 import gym
 
 from rl_functions.policies import RandomPolicy, GreedyPolicy
-from rl_functions.updates import SarsaControl
+from rl_functions.controls import SarsaControl
 from rl_functions.utilities import (
     run_summary,
     make_envs,
