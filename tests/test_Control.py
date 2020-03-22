@@ -28,7 +28,7 @@ def test_iterative_control_returns_greedy_action_when_epsilon_is_zero():
         },
     }
     epsilon = 0.0
-    control = Control(epsilon=epsilon, q=q)
+    control = Control(epsilon=epsilon, random_policy=None, rng=None, q=q)
     expected = action
     for _ in range(10):
         actual = control.next_action(state)

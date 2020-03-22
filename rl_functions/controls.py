@@ -21,25 +21,24 @@ class Control(object):
     """Core functionality for control classes.
     """
 
-    def __init__(self, q=None, epsilon=0.0, random_policy=None, rng=None):
+    def __init__(self, epsilon, random_policy, rng, q):
         """Initializes the core control functionality.
 
         Args:
-            q: (optional) An initial q-function to use, represented as a
+            q: An initial q-function to use, represented as a
                 two-level nested Iterable, i.e. of form q[state][action].  If
                 this argument is not supplied, an empty q-function will be
                 initialized.
-            epsilon: (optional) The probablity of going off-policy and selecting
+            epsilon: The probablity of going off-policy and selecting
                 a random action from a random policy.  Behavior ranges from
                 no deviation from the policy (epsilon=0.0) and complete
-                randomness (epsilon=1.0).  Default: 0.0
-            random_policy: (optional) The policy used to generate the random
-                action when deviating from the policy.  Required when
-                epsilon > 0.
+                randomness (epsilon=1.0).
+            random_policy: The policy used to generate the random action when
+                deviating from the policy.  Required when epsilon > 0.
             rng: (optional) Pseudo-random number generator (either from Python
                 standard library or NumPy) used for all random number generation
                 within the policy.  When None, Python's built-in PRNG will be
-                used.  Default: None
+                used.
 
         Raises:
             None
@@ -129,7 +128,7 @@ class IterativeControl(Control):
         """
         if q is None:
             q = {}
-        super().__init__(q=q, epsilon=epsilon, random_policy=random_policy, rng=rng)
+        super().__init__(epsilon, random_policy, rng, q)
         self.alpha = alpha
 
     def update(self, trajectory, rewards):
@@ -182,11 +181,22 @@ class OnPolicyMonteCarloControl(Control):
         gamma: The discount factor for rewards.
     """
 
-    def __init__(self, gamma, q=None, counts=None):
+    def __init__(self, gamma, epsilon=0.0, random_policy=None, rng=None, q=None, counts=None):
         """Initializes the on-policy Monte Carlo control.
 
         Args:
             gamma: The discount factor for rewards.
+            epsilon: (optional) The probablity of going off-policy and selecting
+                a random action from a random policy.  Behavior ranges from
+                no deviation from the policy (epsilon=0.0) and complete
+                randomness (epsilon=1.0).  Default: 0.0
+            random_policy: (optional) The policy used to generate the random
+                action when deviating from the policy.  Required when
+                epsilon > 0.
+            rng: (optional) Pseudo-random number generator (either from Python
+                standard library or NumPy) used for all random number generation
+                within the policy.  When None, Python's built-in PRNG will be
+                used.  Default: None
             q: (optional) An initial q-function to use, represented as a
                 two-level nested Iterable, i.e. of form q[state][action].  If
                 this argument is not supplied, an empty q-function will be
@@ -204,7 +214,7 @@ class OnPolicyMonteCarloControl(Control):
             q = {}
         if counts is None:
             counts = {}
-        super().__init__(q=q)
+        super().__init__(epsilon, random_policy, rng, q)
         self.gamma = gamma
         self._counts = copy.deepcopy(counts)
 
@@ -286,12 +296,23 @@ class SarsaControl(Control):
         gamma: The discount factor for rewards.
     """
 
-    def __init__(self, alpha, gamma, q=None):
+    def __init__(self, alpha, gamma, epsilon=0.0, random_policy=None, rng=None, q=None):
         """Initializes the Sarsa control.
 
         Args:
             alpha: The scaling factor for the update.
             gamma: The discount factor for rewards.
+            epsilon: (optional) The probablity of going off-policy and selecting
+                a random action from a random policy.  Behavior ranges from
+                no deviation from the policy (epsilon=0.0) and complete
+                randomness (epsilon=1.0).  Default: 0.0
+            random_policy: (optional) The policy used to generate the random
+                action when deviating from the policy.  Required when
+                epsilon > 0.
+            rng: (optional) Pseudo-random number generator (either from Python
+                standard library or NumPy) used for all random number generation
+                within the policy.  When None, Python's built-in PRNG will be
+                used.  Default: None
             q: (optional) An initial q-function to use, represented as a
                 two-level nested Iterable, i.e. of form q[state][action].  If
                 this argument is not supplied, an empty q-function will be
@@ -302,7 +323,7 @@ class SarsaControl(Control):
         """
         if q is None:
             q = {}
-        super().__init__(q=q)
+        super().__init__(epsilon, random_policy, rng, q)
         self.alpha = alpha
         self.gamma = gamma
 
@@ -355,12 +376,23 @@ class QLearningControl(Control):
         gamma: The discount factor for rewards.
     """
 
-    def __init__(self, alpha, gamma, q=None):
+    def __init__(self, alpha, gamma, epsilon=0.0, random_policy=None, rng=None, q=None):
         """Initializes the Q-learning control.
 
         Args:
             alpha: The scaling factor for the update.
             gamma: The discount factor for rewards.
+            epsilon: (optional) The probablity of going off-policy and selecting
+                a random action from a random policy.  Behavior ranges from
+                no deviation from the policy (epsilon=0.0) and complete
+                randomness (epsilon=1.0).  Default: 0.0
+            random_policy: (optional) The policy used to generate the random
+                action when deviating from the policy.  Required when
+                epsilon > 0.
+            rng: (optional) Pseudo-random number generator (either from Python
+                standard library or NumPy) used for all random number generation
+                within the policy.  When None, Python's built-in PRNG will be
+                used.  Default: None
             q: (optional) An initial q-function to use, represented as a
                 two-level nested Iterable, i.e. of form q[state][action].  If
                 this argument is not supplied, an empty q-function will be
@@ -371,7 +403,7 @@ class QLearningControl(Control):
         """
         if q is None:
             q = {}
-        super().__init__(q=q)
+        super().__init__(epsilon, random_policy, rng, q)
         self.alpha = alpha
         self.gamma = gamma
 
