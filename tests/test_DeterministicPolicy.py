@@ -5,7 +5,7 @@ import pytest
 
 from rl_functions.policies import DeterministicPolicy
 
-from utilities import create_random_policy_with_fixed_rng
+from utilities import create_rngs_with_fixed_seed
 
 @pytest.fixture
 def det_policy():
@@ -98,12 +98,11 @@ def test_epsilon_policy_gives_deterministic_results_when_an_rng_with_a_fixed_see
     transitions = {state: action}
     # Set the number of actions smaller than the on-policy action to clearly
     # differentiate between on-policy and random actions
-    random_policy = create_random_policy_with_fixed_rng(action-1, 0)
-    random_generator = default_rng(seed=0)
+    policy, epsilon_rng = create_rngs_with_fixed_seed(action-1, 0, 0)
     det_policy = DeterministicPolicy(
         epsilon=0.5,
-        random_policy=random_policy,
-        random_generator=random_generator,
+        random_policy=policy,
+        random_generator=epsilon_rng,
     )
     det_policy.add_transitions(transitions)
     actions_expected = [action, 15, 12, 6, action, action]
@@ -115,7 +114,7 @@ def test_epsilon_policy_gives_identical_results_to_random_policy_when_epsilon_eq
     dummy_state = 50
     dummy_action = 25
     dummy_transition = {dummy_state: dummy_action}
-    random_policy = create_random_policy_with_fixed_rng(8, 0)
+    random_policy, _ = create_rngs_with_fixed_seed(8, 0, 0)
     random_policy_copy = copy.deepcopy(random_policy)
     det_policy = DeterministicPolicy(epsilon=1.0, random_policy=random_policy_copy)
     det_policy.add_transitions(dummy_transition)

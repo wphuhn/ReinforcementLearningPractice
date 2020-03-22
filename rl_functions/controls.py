@@ -15,11 +15,13 @@ Currently, only the q function update is supported.
 
 import copy
 
+from rl_functions.policies import GreedyPolicy
+
 class Control(object):
     """Core functionality for control classes.
     """
 
-    def __init__(self, q=None):
+    def __init__(self, q=None, epsilon=0.0, random_policy=None, rng=None):
         """Initializes the core control functionality.
 
         Args:
@@ -27,6 +29,17 @@ class Control(object):
                 two-level nested Iterable, i.e. of form q[state][action].  If
                 this argument is not supplied, an empty q-function will be
                 initialized.
+            epsilon: (optional) The probablity of going off-policy and selecting
+                a random action from a random policy.  Behavior ranges from
+                no deviation from the policy (epsilon=0.0) and complete
+                randomness (epsilon=1.0).  Default: 0.0
+            random_policy: (optional) The policy used to generate the random
+                action when deviating from the policy.  Required when
+                epsilon > 0.
+            rng: (optional) Pseudo-random number generator (either from Python
+                standard library or NumPy) used for all random number generation
+                within the policy.  When None, Python's built-in PRNG will be
+                used.  Default: None
 
         Raises:
             None
@@ -34,6 +47,31 @@ class Control(object):
         if q is None:
             q = {}
         self._q = copy.deepcopy(q)
+        if epsilon > 0.0:
+            self._policy = GreedyPolicy(
+                epsilon=epsilon,
+                random_policy=random_policy,
+                random_generator=rng,
+            )
+        else:
+            self._policy = GreedyPolicy(epsilon=0.0)
+
+    def next_action(self, state):
+        """Selects an action based on the control's current policy.
+
+        For off-policy learning, the action corresponds to the on-policy choice,
+        i.e. the action the control will take (modulo epsilon-randomness)
+
+        Args:
+            state: The state for which an action should be chosen
+
+        Returns:
+            Action to take for the given state based on the current policy
+
+        Raises:
+            None
+        """
+        return self._policy.next_action(self._q, state)
 
     def get_q(self):
         """Returns the current q-function.
@@ -65,11 +103,22 @@ class IterativeControl(Control):
         alpha: The scaling factor for the update.
     """
 
-    def __init__(self, alpha, q=None):
+    def __init__(self, alpha, epsilon=0.0, random_policy=None, rng=None, q=None):
         """Initializes the iterative control.
 
         Args:
             alpha: The scaling factor for the update.
+            epsilon: (optional) The probablity of going off-policy and selecting
+                a random action from a random policy.  Behavior ranges from
+                no deviation from the policy (epsilon=0.0) and complete
+                randomness (epsilon=1.0).  Default: 0.0
+            random_policy: (optional) The policy used to generate the random
+                action when deviating from the policy.  Required when
+                epsilon > 0.
+            rng: (optional) Pseudo-random number generator (either from Python
+                standard library or NumPy) used for all random number generation
+                within the policy.  When None, Python's built-in PRNG will be
+                used.  Default: None
             q: (optional) An initial q-function to use, represented as a
                 two-level nested Iterable, i.e. of form q[state][action].  If
                 this argument is not supplied, an empty q-function will be
@@ -80,7 +129,7 @@ class IterativeControl(Control):
         """
         if q is None:
             q = {}
-        super().__init__(q=q)
+        super().__init__(q=q, epsilon=epsilon, random_policy=random_policy, rng=rng)
         self.alpha = alpha
 
     def update(self, trajectory, rewards):

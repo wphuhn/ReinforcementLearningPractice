@@ -6,7 +6,7 @@ import pytest
 from rl_functions.policies import ConstantPolicy
 
 from constants import N_ACTIONS
-from utilities import create_random_policy_with_fixed_rng
+from utilities import create_rngs_with_fixed_seed
 
 def test_constant_policy_gives_a_consistant_answer_when_it_is_run_repeatedly():
     expected = 3
@@ -31,7 +31,7 @@ def test_creating_constant_policy_throws_exception_when_epsilon_is_greater_than_
 def test_epsilon_constant_policy_gives_identical_results_to_random_policy_when_epsilon_equals_one_and_same_rng_used():
     # Not the best test in the world, I know, but it's an important edge case
     # We generate an action from a random policy
-    random_policy = create_random_policy_with_fixed_rng(N_ACTIONS, 0)
+    random_policy, _ = create_rngs_with_fixed_seed(N_ACTIONS, 0, 0)
     expected = random_policy.next_action()
     # Then we copy the state of the random policy *after* action has been taken
     random_policy_copy = copy.deepcopy(random_policy)
@@ -51,13 +51,12 @@ def test_epsilon_constant_policy_gives_identical_results_to_random_policy_when_e
 
 def test_epsilon_constant_policy_gives_deterministic_results_when_an_rng_with_a_fixed_seed_is_supplied():
     initial_action = 3
-    random_policy = create_random_policy_with_fixed_rng(N_ACTIONS, 0)
-    random_generator = default_rng(seed=0)
+    policy, epsilon_rng = create_rngs_with_fixed_seed(N_ACTIONS, 0, 0)
     constant_policy = ConstantPolicy(
         initial_action,
         epsilon=0.5,
-        random_policy=random_policy,
-        random_generator=random_generator,
+        random_policy=policy,
+        random_generator=epsilon_rng,
     )
     actions_expected = [3, 5, 4, 2, 2]
     for expected in actions_expected:
@@ -66,21 +65,20 @@ def test_epsilon_constant_policy_gives_deterministic_results_when_an_rng_with_a_
 
 def test_two_epsilon_constant_policies_give_the_same_results_when_one_is_a_copy_of_the_other():
     initial_action = 3
-    random_policy_1 = create_random_policy_with_fixed_rng(N_ACTIONS, 0)
-    random_policy_2 = copy.deepcopy(random_policy_1)
-    random_generator_1 = default_rng(seed=0)
-    random_generator_2 = copy.deepcopy(random_generator_1)
+    policy_1, epsilon_rng_1 = create_rngs_with_fixed_seed(N_ACTIONS, 0, 0)
+    policy_2 = copy.deepcopy(policy_1)
+    epsilon_rng_2 = copy.deepcopy(epsilon_rng_1)
     constant_policy_1 = ConstantPolicy(
         initial_action,
         epsilon=0.5,
-        random_policy=random_policy_1,
-        random_generator=random_generator_1,
+        random_policy=policy_1,
+        random_generator=epsilon_rng_1,
     )
     constant_policy_2 = ConstantPolicy(
         initial_action,
         epsilon=0.5,
-        random_policy=random_policy_2,
-        random_generator=random_generator_2,
+        random_policy=policy_2,
+        random_generator=epsilon_rng_2,
     )
     for _ in range(100):
         expected = constant_policy_1.next_action()

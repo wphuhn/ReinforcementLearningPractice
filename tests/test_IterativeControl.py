@@ -5,6 +5,8 @@ import pytest
 
 from rl_functions.controls import IterativeControl
 
+from utilities import create_rngs_with_fixed_seed
+
 def test_update_iterative_updates_existing_state_action_pair_when_the_pair_is_in_the_q_function():
     state = 0
     action = 2

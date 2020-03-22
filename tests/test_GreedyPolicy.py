@@ -6,7 +6,7 @@ import pytest
 
 from rl_functions.policies import GreedyPolicy
 
-from utilities import create_random_policy_with_fixed_rng
+from utilities import create_rngs_with_fixed_seed
 
 def test_creating_greedy_policy_throws_exception_when_epsilon_is_greater_than_zero_and_random_policy_not_provided():
     with pytest.raises(Exception) as excinfo:
@@ -88,12 +88,11 @@ def test_epsilon_greedy_policy_gives_deterministic_results_when_an_rng_with_a_fi
             7: 1.5,
         }
     }
-    random_policy = create_random_policy_with_fixed_rng(8, 0)
-    random_generator = default_rng(seed=0)
+    policy, rng = create_rngs_with_fixed_seed(8, 0, 0)
     greedy_policy = GreedyPolicy(
         epsilon=0.5,
-        random_policy=random_policy,
-        random_generator=random_generator,
+        random_policy=policy,
+        random_generator=rng,
     )
     actions_expected = [2, 5, 4, 2, 2, 2]
     for expected in actions_expected:
@@ -161,7 +160,7 @@ def test_epsilon_greedy_policy_gives_identical_results_to_random_policy_when_eps
             7: 1.5,
         }
     }
-    random_policy = create_random_policy_with_fixed_rng(8, 0)
+    random_policy, _ = create_rngs_with_fixed_seed(8, 0, 0)
     random_policy_copy = copy.deepcopy(random_policy)
     greedy_policy = GreedyPolicy(epsilon=1.0, random_policy=random_policy_copy)
     for _ in range(100):
