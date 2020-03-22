@@ -3,7 +3,7 @@ from time import time, sleep
 
 import gym
 
-from rl_functions.policies import RandomPolicy, GreedyPolicy
+from rl_functions.policies import RandomPolicy
 from rl_functions.controls import OnPolicyMonteCarloControl
 from rl_functions.utilities import (
     run_summary,
@@ -22,6 +22,7 @@ MAX_STEPS_PER_EPISODE = 10000000 # Number of steps per episode (obviously)
 NUM_EPSIODES = 4200 # Number of episodes to run
 OUTPUT_MOVIE = False # Whether to output a movie (will not train when doing so)
 FRAME_RATE = 1./30. # FPS when rending a movie
+START_FROM_MODEL = False
 
 def main():
     start_time = time()
@@ -35,10 +36,8 @@ def main():
 
     q = {}
     counts = {}
-    if OUTPUT_MOVIE:
-        # If we're making a movie, we create a (truly) greedy policy and load
-        # a pre-existing q function
-        policy = GreedyPolicy()
+    if START_FROM_MODEL:
+        # Load a pre-existing q-function
         with open("best_q.pkl", "rb") as q_file:
             q = pickle.load(q_file)
     else:
@@ -46,14 +45,16 @@ def main():
         # and initialize the q function and counts to all zeros.  Since the
         # greedy policy breaks ties randomly, this is essentially a random
         # policy stating out
-        policy = GreedyPolicy(
-            epsilon=EPSILON,
-            random_policy=RandomPolicy(n_actions),
-        )
         for state in range(n_states):
             q[state] = {key: 0. for key in range(n_actions)}
             counts[state] = {key: 0 for key in range(n_actions)}
-        control = OnPolicyMonteCarloControl(GAMMA, q=q, counts=counts)
+    control = OnPolicyMonteCarloControl(
+        GAMMA,
+        epsilon=EPSILON,
+        random_policy=RandomPolicy(n_actions),
+        q=q,
+        counts=counts,
+    )
 
     # Outer loop for episode
     for episode in range(NUM_EPSIODES):
@@ -76,7 +77,10 @@ def main():
                 sleep(FRAME_RATE)
 
             # Predict the current action and generate the reward
-            action = policy.next_action(q, state)
+            if OUTPUT_MOVIE:
+                action = policy.next_action(q, state)
+            else:
+                action = control.next_action(state)
             trajectory.append((state, action))
             observation, reward, done, _ = env.step(action)
             rewards.append(reward)

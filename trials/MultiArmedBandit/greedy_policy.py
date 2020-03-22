@@ -3,7 +3,7 @@ from time import time
 import numpy as np
 from numpy.random import normal
 
-from rl_functions.policies import GreedyPolicy, RandomPolicy
+from rl_functions.policies import RandomPolicy
 from rl_functions.controls import IterativeControl
 from rl_functions.utilities import run_summary
 
@@ -24,12 +24,16 @@ def main():
     q_function = {state:
         {key: value for key, value in zip(range(9), [100.]*9)}
     }
-    greedy_policy = GreedyPolicy(epsilon=EPSILON, random_policy=RandomPolicy(9))
-    control = IterativeControl(alpha=ALPHA, q=q_function)
+    control = IterativeControl(
+        alpha=ALPHA,
+        epsilon=EPSILON,
+        random_policy=RandomPolicy(9),
+        q=q_function,
+    )
     for run_index in range(NUM_RUNS):
         cumul_reward = 0.0
         for timestep in range(MAX_STEPS_PER_RUN):
-            action = greedy_policy.next_action(q_function, state)
+            action = control.next_action(state)
             reward = multi_arm_bandit(action)
             trajectory = [(state, action)]
             rewards = [reward]

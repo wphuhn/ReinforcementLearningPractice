@@ -3,7 +3,7 @@ from time import time, sleep
 
 import gym
 
-from rl_functions.policies import RandomPolicy, GreedyPolicy
+from rl_functions.policies import RandomPolicy
 from rl_functions.controls import SarsaControl
 from rl_functions.utilities import (
     run_summary,
@@ -68,19 +68,10 @@ def main():
 
     q = {}
     if START_FROM_MODEL:
-        # We create a (truly) greedy policy and load a pre-existing q function
-        policy = GreedyPolicy()
+        # Load an existing q-function
         with open("best_q.pkl", "rb") as q_file:
             q = pickle.load(q_file)
     else:
-        # If we're training a q function de nuovo, we load an epsilon-soft
-        # greedy policy and initialize the q function and counts to all zeros.
-        # Since the greedy policy breaks ties randomly, this is essentially a
-        # random policy stating out
-        policy = GreedyPolicy(
-            epsilon=EPSILON,
-            random_policy=RandomPolicy(n_actions),
-        )
         # TODO: I don't think this is a good idea.  Defeats the point of using a
         #       hash tables, and many of the states won't be visitable.  In
         #       addition, I have a feeling that the initial value shouldn't be a
@@ -88,7 +79,13 @@ def main():
         #       known.
         for state in range(n_states):
             q[state] = {key: INITIAL_VALUE for key in range(n_actions)}
-        control = SarsaControl(ALPHA, GAMMA, q=q)
+    control = SarsaControl(
+        ALPHA,
+        GAMMA,
+        epsilon=EPSILON,
+        random_policy=RandomPolicy(n_actions),
+        q=q,
+    )
 
     # Outer loop for episode
     for episode in range(NUM_EPSIODES):
@@ -111,7 +108,7 @@ def main():
                 sleep(FRAME_RATE)
 
             # Predict the current action and generate the reward
-            action = policy.next_action(q, state)
+            action = control.next_action(state)
             trajectory.append((state, action))
             # Update the q function based on the trajector for this episode
             if timestep > 0:
