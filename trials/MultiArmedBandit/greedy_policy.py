@@ -7,21 +7,25 @@ from rl_functions.policies import RandomPolicy
 from rl_functions.controls import IterativeControl
 from rl_functions.utilities import run_summary
 
-MAX_STEPS_PER_RUN = 100
-NUM_RUNS = 4200
+MAX_STEPS_PER_EPISODE = 100
+N_EPISODES = 4200
 ALPHA = 0.1
 EPSILON = 0.01
+DUMMY_STATE = 0
 
-def multi_arm_bandit(action):
-    std_dev = 0.1
-    rewards = [0, 2, 5, 3, 4, -2, -5, -3, -4]
-    return normal(rewards[action], std_dev)
+class MultiArmBandit(object):
+    @staticmethod
+    def step(action):
+        std_dev = 0.1
+        rewards = [0, 2, 5, 3, 4, -2, -5, -3, -4]
+        reward = normal(rewards[action], std_dev)
+        return DUMMY_STATE, reward, False, ""
 
 def main():
     start_time = time()
-    state = 0 # Multi-armed bandit has only one state
+    initial_state = DUMMY_STATE # Multi-armed bandit has only one state
     # Initialize q-function optimistically for all actions
-    q_function = {state:
+    q_function = {initial_state:
         {key: value for key, value in zip(range(9), [100.]*9)}
     }
     control = IterativeControl(
@@ -30,19 +34,18 @@ def main():
         random_policy=RandomPolicy(9),
         q=q_function,
     )
-    for run_index in range(NUM_RUNS):
-        cumul_reward = 0.0
-        for timestep in range(MAX_STEPS_PER_RUN):
-            action = control.next_action(state)
-            reward = multi_arm_bandit(action)
-            trajectory = [(state, action)]
-            rewards = [reward]
-            control.update(trajectory, rewards)
+    env = MultiArmBandit()
+    for episode_index in range(N_EPISODES):
+        trajectory, rewards, infos = control.run_episode(
+            env,
+            initial_state,
+            max_n_steps=MAX_STEPS_PER_EPISODE,
+        )
+        cumul_reward = sum(rewards)
+        print(run_summary(0, episode_index + 1, MAX_STEPS_PER_EPISODE, cumul_reward))
+        if episode_index % 100 == 0:
             q_function = control.get_q()
-            cumul_reward += reward
-        print(run_summary(0, run_index + 1, timestep + 1, cumul_reward))
-        if run_index % 100 == 0:
-            print(f"Run {run_index + 1} : {q_function}")
+            print(f"Run {episode_index + 1} : {q_function}")
     elapsed_time = time() - start_time
     print(f"Elapsed time : {elapsed_time} s")
 

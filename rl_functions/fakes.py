@@ -4,7 +4,7 @@
 class FakeEnv(object):
     """Fake object for modeling an OpenAI Gym environment in the test suite.
     """
-    def __init__(self, observation, reward, done, info):
+    def __init__(self, observation=0, reward=0, done=False, info=None):
         """Initializes the fake object's return parameters.
 
         All parameters may independently be specified either as a scalar or as a

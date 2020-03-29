@@ -7,7 +7,7 @@ from rl_functions.controls import Control
 
 from utilities import create_rngs_with_fixed_seed
 
-def test_iterative_control_returns_greedy_action_when_epsilon_is_zero():
+def test_control_returns_greedy_action_when_epsilon_is_zero():
     state = 1
     action = 7
     max_value = 25.
@@ -34,7 +34,7 @@ def test_iterative_control_returns_greedy_action_when_epsilon_is_zero():
         actual = control.next_action(state)
         assert expected == actual
 
-def test_iterative_control_returns_expected_results_when_epsilon_is_non_zero():
+def test_control_returns_expected_results_when_epsilon_is_non_zero():
     state = 1
     action = 7
     max_value = 25.

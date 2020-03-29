@@ -166,6 +166,33 @@ class IterativeControl(Control):
         q_new = q_prev + self.alpha * (reward - q_prev)
         self._q[state][action] = q_new
 
+    def run_episode(self, env, initial_state, max_n_steps=None):
+        if max_n_steps is not None and max_n_steps < 0:
+            raise Exception("Episode cannot have a negative number of steps")
+        # Initialize the history
+        n_steps = 0
+        trajectory = [(initial_state, None)]
+        rewards = []
+        infos = []
+        state = initial_state
+        while max_n_steps is None or n_steps < max_n_steps:
+            # Perform the next action
+            action = self.next_action(state)
+            next_state, reward, done, info = env.step(action)
+            # Update the history to account for the action taken and reward
+            # received
+            trajectory.pop()
+            trajectory.append((state, action))
+            rewards.append(reward)
+            self.update(trajectory, rewards)
+            # Move to next step
+            infos.append(info)
+            trajectory.append((next_state, None))
+            if done:
+                break
+            state = next_state
+            n_steps += 1
+        return trajectory, rewards, infos
 
 class OnPolicyMonteCarloControl(Control):
     """Control for updating q function based on on-policy Monte Carlo algorithm
