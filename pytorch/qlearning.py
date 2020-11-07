@@ -3,35 +3,6 @@ from time import time
 
 import numpy as np
 import torch
-import torch.nn as nn
-import torch.nn.functional as F
-
-# TODO: Currently here because of QLearning dependency, should be removed
-from game import ReplayBuffer
-
-# TODO: The following are here due to AtariModel dependency, should be removed at some point
-N_OUTPUTS = 4  # Available via game.n_actions
-N_FRAMES = 4
-
-
-# TODO: Currently here because of QLearning dependence, should be removed
-class AtariModel(nn.Module):
-
-    def __init__(self):
-        super(AtariModel, self).__init__()
-        self.conv_1 = nn.Conv2d(N_FRAMES, 32, 8, stride=4)
-        self.conv_2 = nn.Conv2d(32, 64, 4, stride=2)
-        self.conv_3 = nn.Conv2d(64, 64, 3, stride=1)
-        self.linear_1 = nn.Linear(64 * 7 * 7, 512)
-        self.linear_2 = nn.Linear(512, N_OUTPUTS)
-
-    def forward(self, x):
-        y = F.relu(self.conv_1(x))
-        y = F.relu(self.conv_2(y))
-        y = F.relu(self.conv_3(y))
-        y = y.view(y.size(0), -1)
-        y = F.relu(self.linear_1(y))
-        return self.linear_2(y)
 
 
 class QLearning(object):
@@ -80,10 +51,8 @@ class QLearning(object):
             return eps_min
         return (eps_min - eps_max) / (n_steps - 1) * (step - 1) + eps_max
 
-    def train(self, game, net, criterion, optimizer, device, target_update_freq=10000, save_freq=500, replay=None,
-              populate_states=12500, batch_size=32):
-        if replay is None:
-            replay = ReplayBuffer().populate(game, n_states=populate_states)
+    def train(self, game, net, criterion, optimizer, device, replay, target_update_freq=10000, save_freq=500,
+              batch_size=32):
         game.create()
 
         while self.timestep < self.n_steps:
@@ -100,7 +69,7 @@ class QLearning(object):
             time_target_update = 0
 
             # Set up target network
-            target_net = AtariModel()
+            target_net = net.base_model()
             target_net.half()
             target_net.to(device)
             target_net.load_state_dict(net.state_dict())
