@@ -91,3 +91,6 @@ class AtariModel(nn.Module):
 
     def base_model(self):
         return AtariModel(self.n_frames, self.n_outputs)
+
+    def set_to(self, net):
+        self.load_state_dict(net.state_dict())
