@@ -89,8 +89,55 @@ class AtariModel(nn.Module):
         y = F.relu(self.linear_1(y))
         return self.linear_2(y)
 
-    def base_model(self):
-        return AtariModel(self.n_frames, self.n_outputs)
-
     def set_to(self, net):
         self.load_state_dict(net.state_dict())
+
+    def create_target_network(self, device):
+        # Set up target network
+        target_net = AtariModel(self.n_frames, self.n_outputs)
+        target_net.half()
+        target_net.to(device)
+        target_net.load_state_dict(self.state_dict())
+        return target_net
+
+    def generate_best_action(self, state, device):
+        # Generate action
+        q_values = self(torch.tensor(state.frames, dtype=torch.half, device=device).unsqueeze(0))
+        # Needs to reside on CPU to be fed to OpenAI Gym, and argmax doesn't accept half precision
+        q_values = q_values.clone().detach().float().cpu()
+        # The typecast is needed to handle an edge case:
+        # numpy() returns a 0D ndarray, which will cause the mini-batch
+        # construction to throw an "object does not have length" error
+        # if it's the first element in the mini-batch
+        return int(torch.argmax(q_values).data.numpy())
+
+    def get_current_q_vals(self, mini_batch, device):
+        state_batch = mini_batch["state"].to(device)
+        action_batch = mini_batch["action"].to(device)
+        # Get model predicted q values
+        cur_q = self(state_batch)
+        current_qval = cur_q.gather(dim=1, index=action_batch.long().unsqueeze(dim=1)).squeeze()
+        return current_qval
+
+    def get_target_q_vals(self, mini_batch, device, gamma):
+        next_state_batch = mini_batch["next_state"].to(device)
+        reward_batch = mini_batch["reward"].to(device)
+        done_batch = mini_batch["done"].to(device)
+        # Get target-model predicted q values
+        with torch.no_grad():
+            # torch.max isn't implemented for half precision, so use single
+            next_q = self(next_state_batch).float()
+        target_qval = reward_batch + gamma * ((1 - done_batch) * torch.max(next_q, dim=1)[0])
+        # Convert back to half precision for optimizer
+        target_qval = target_qval.half()
+        return target_qval
+
+    def train_using_target_qvals(self, current_qval, target_qval, criterion, optimizer):
+        loss = criterion(current_qval, target_qval.detach())
+        optimizer.zero_grad()
+        loss.backward()
+        # Perform gradient clipping:
+        for param in self.parameters():
+            param.grad.clamp(-1, 1)
+        optimizer.step()
+        return loss.item()

@@ -4,6 +4,8 @@ from time import time
 import numpy as np
 import torch
 
+# TODO: Get rid of "device" throughout code, doesn't belong here
+
 
 class QLearning(object):
 
@@ -23,8 +25,8 @@ class QLearning(object):
         self._time_act = 0
         self._time_replay = 0
         self._time_batch_create = 0
-        self._time_batch_transfer = 0
-        self._time_qs = 0
+        self._time_current_qvals = 0
+        self._time_target_qvals = 0
         self._time_train = 0
         self._time_target_update = 0
         self._time_episode = 0
@@ -48,8 +50,8 @@ class QLearning(object):
         self._time_act = 0
         self._time_replay = 0
         self._time_batch_create = 0
-        self._time_batch_transfer = 0
-        self._time_qs = 0
+        self._time_current_qvals = 0
+        self._time_target_qvals = 0
         self._time_train = 0
         self._time_target_update = 0
 
@@ -58,11 +60,30 @@ class QLearning(object):
         print(f"- act time {self._time_act} s")
         print(f"- replay time {self._time_replay} s")
         print(f"- batch create time {self._time_batch_create} s")
-        print(f"- batch transfer time {self._time_batch_transfer} s")
-        print(f"- qs time {self._time_qs} s")
+        print(f"- current qvals time {self._time_current_qvals} s")
+        print(f"- target qvals time {self._time_target_qvals} s")
         print(f"- train time {self._time_train} s")
         print(f"- target update time {self._time_target_update} s")
         print(f"- epoch time {self._time_episode} s")
+
+    def _optimize_model(self, net, target_net, criterion, optimizer, replay, batch_size, device):
+        temp_time = time()
+        mini_batch = replay.create_mini_batch(batch_size=batch_size)
+        self._time_batch_create += time() - temp_time
+
+        temp_time = time()
+        current_qval = net.get_current_q_vals(mini_batch, device)
+        self._time_current_qvals += time() - temp_time
+
+        temp_time = time()
+        target_qval = target_net.get_target_q_vals(mini_batch, device, self.gamma)
+        self._time_target_qvals += time() - temp_time
+
+        # Train model
+        temp_time = time()
+        loss = net.train_using_target_qvals(current_qval, target_qval, criterion, optimizer)
+        self._time_train += time() - temp_time
+        return loss
 
     def train(self, game, net, criterion, optimizer, device, replay, target_update_freq=10000, save_freq=500,
               batch_size=32):
@@ -73,7 +94,7 @@ class QLearning(object):
             self._reset_episode_timers()
             temp_time = time()
 
-            target_net = self._create_target_network(net, device)
+            target_net = net.create_target_network(device)
 
             _ = game.reset()
             # TODO: Should do a proper first step, not a random initialization
@@ -89,7 +110,7 @@ class QLearning(object):
                 if np.random.random() < epsilon:
                     action = game.sample()
                 else:
-                    action = self._generate_best_action(net, state, device)
+                    action = net.generate_best_action(state, device)
 
                 # Run environment and create next state
                 # To accelerate performance, we repeat the same action repeatedly
@@ -103,7 +124,7 @@ class QLearning(object):
                 self._time_replay += time() - temp_time
 
                 # Update model
-                loss = self._train_model(net, target_net, criterion, optimizer, replay, batch_size, device)
+                loss = self._optimize_model(net, target_net, criterion, optimizer, replay, batch_size, device)
                 self.losses.append(loss)
 
                 # Update target model
@@ -137,67 +158,7 @@ class QLearning(object):
 
         return self.losses, self.rewards_episode, replay
 
-    @staticmethod
-    def _create_target_network(net, device):
-        # Set up target network
-        target_net = net.base_model()
-        target_net.half()
-        target_net.to(device)
-        target_net.load_state_dict(net.state_dict())
-        return target_net
-
-    @staticmethod
-    def _generate_best_action(net, state, device):
-        # Generate action
-        q_values = net(torch.tensor(state.frames, dtype=torch.half, device=device).unsqueeze(0))
-        # Needs to reside on CPU to be fed to OpenAI Gym, and argmax doesn't accept half precision
-        q_values = q_values.clone().detach().float().cpu()
-        # The typecast is needed to handle an edge case:
-        # numpy() returns a 0D ndarray, which will cause the mini-batch
-        # construction to throw an "object does not have length" error
-        # if it's the first element in the mini-batch
-        return int(torch.argmax(q_values).data.numpy())
-
-    def _train_model(self, net, target_net, criterion, optimizer, replay, batch_size, device):
-        temp_time = time()
-        mini_batch = replay.create_mini_batch(batch_size=batch_size)
-        self._time_batch_create += time() - temp_time
-
-        temp_time = time()
-        state_batch = mini_batch["state"].to(device)
-        action_batch = mini_batch["action"].to(device)
-        reward_batch = mini_batch["reward"].to(device)
-        next_state_batch = mini_batch["next_state"].to(device)
-        done_batch = mini_batch["done"].to(device)
-        self._time_batch_transfer += time() - temp_time
-
-        temp_time = time()
-        # Get model predicted q values
-        cur_q = net(state_batch)
-        # Get target-model predicted q values
-        with torch.no_grad():
-            # torch.max isn't implemented for half precision, so use single
-            next_q = target_net(next_state_batch).float()
-
-        # Get the expected and target q-values
-        current_qval = cur_q.gather(dim=1, index=action_batch.long().unsqueeze(dim=1)).squeeze()
-        target_qval = reward_batch + self.gamma * ((1 - done_batch) * torch.max(next_q, dim=1)[0])
-        # Convert back to half precision for optimizer
-        target_qval = target_qval.half()
-        self._time_qs += time() - temp_time
-
-        # Train model
-        temp_time = time()
-        loss = criterion(current_qval, target_qval.detach())
-        optimizer.zero_grad()
-        loss.backward()
-        # Perform gradient clipping:
-        for param in net.parameters():
-            param.grad.clamp(-1, 1)
-        optimizer.step()
-        self._time_train += time() - temp_time
-        return loss.item()
-
+    # TODO:  Remove PyTorch-specific implementation
     def save(self, game, net, criterion, optimizer, replay, save_replay=False, suffix=""):
         with open(f"{self.output_folder}/training{suffix}.pkl", "wb") as training_file:
             pkl.dump(self, training_file)
