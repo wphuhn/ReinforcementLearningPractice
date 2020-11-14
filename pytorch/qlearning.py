@@ -91,6 +91,9 @@ class QLearning(object):
 
         while self.timestep < self.n_steps:
             reward_episode = 0
+            n_random = 0
+            n_maximal = 0
+            actions_taken = {}
             self._reset_episode_timers()
             temp_time = time()
 
@@ -109,8 +112,14 @@ class QLearning(object):
                 epsilon = self.epsilon_schedule(self.timestep)
                 if np.random.random() < epsilon:
                     action = game.sample()
+                    n_random += 1
                 else:
                     action = net.generate_best_action(state, device)
+                    n_maximal += 1
+
+                if action not in actions_taken:
+                    actions_taken[action] = 0
+                actions_taken[action] += 1
 
                 # Run environment and create next state
                 # To accelerate performance, we repeat the same action repeatedly
@@ -143,6 +152,9 @@ class QLearning(object):
             self._time_episode = time() - self._time_episode
 
             print(f"Finished epoch {self.epoch}, total rewards {reward_episode}, total num steps {step}, buffer length {len(replay.replay)}, final epsilon {epsilon}")
+            print(f"- # random actions:  {n_random}")
+            print(f"- # maximal actions: {n_maximal}")
+            print(f"- actions taken:     {actions_taken}")
             self._output_timings()
 
             if self.output_folder is not None:
